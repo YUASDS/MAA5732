@@ -30,7 +30,7 @@ def remove_ansi_codes(text):
 def log_to_textbrowser(message, signals):
     """处理日志消息并发送到TextBrowser"""
     cleaned_message = remove_ansi_codes(message.record["message"])
-    print(cleaned_message)  # 打印到控制台
+    # print(cleaned_message)  # 打印到控制台
     signals.log_message.emit(cleaned_message)
 
 
@@ -60,7 +60,7 @@ class MyWidget(QWidget):
         self.log_signals.log_message.connect(self.append_log)
 
         # 配置loguru
-        # self.setup_logger()
+        self.setup_logger()
         # 为按钮添加点击事件 用于切换界面
         self.widget_button.append(self.ui.GuildButton)
         self.widget_button.append(self.ui.RaidButton)
@@ -108,13 +108,10 @@ class MyWidget(QWidget):
 
     def setup_logger(self):
         """配置loguru使用自定义处理器"""
-        # 移除默认处理器
-        logger.remove()
-
         # 添加自定义处理器（使用partial绑定信号对象）
-        logger.add(
+        logger.add(level="INFO",
             sink=partial(log_to_textbrowser, signals=self.log_signals),
-            format="<green>{time:YYYY-MM-DD HH:mm:ss}</green> | "
+            format="<blue>{time:YYYY-MM-DD HH:mm:ss}</blue> | "
             "<level>{level: <8}</level> | "
             "<cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> - "
             "<level>{message}</level>",
@@ -127,7 +124,7 @@ class MyWidget(QWidget):
         color_map = {
             "ERROR": "red",
             "WARNING": "orange",
-            "INFO": "green",
+            "INFO": "blue",
             "DEBUG": "gray",
             "TRACE": "lightgray",
         }
