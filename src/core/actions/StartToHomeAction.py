@@ -37,12 +37,11 @@ class StartToHomeAction(MyCustomAction):
         time.sleep(30)
         # 处理广告
         while True:
-            detail = clicker.ocr_click("今日不再弹出")
+            detail = clicker.ocr_rate_click("今日不再弹出",0.1, 0.1, 20, 20)
             status = detail.status.succeeded  # type: ignore
             logger.debug(f"Click:今日不再弹出 {status}")
             if not status:
                 break
-            clicker.click_rate(0.01,0.01)
         # 领取月卡
         detail = clicker.ocr_click("领取",roi=[0.5, 0.5, 0.9, 0.9])
         if detail and detail.status.succeeded:

@@ -44,9 +44,9 @@ class Purchase(MyCustomAction):
     def free_shop(self):
         click = self.clicker
         click.ocr_click("精选礼包")
-        click.ocr_click("养成补给")
-        for _ in range(1):
-            click.swape([0.965, 0.5, 10, 10], [0.5, 0.6, 10, 10], 1000)
+        click.ocr_click("精选推荐")
+        # for _ in range(1):
+        #     click.swape([0.965, 0.5, 10, 10], [0.5, 0.6, 10, 10], 1000)
         click.ocr_click("每日免费补给")
         click.ocr_click("购买")
         click.click_blink()

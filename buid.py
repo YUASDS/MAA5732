@@ -51,6 +51,7 @@ PyInstaller.__main__.run(
         "--clean",
         "--uac-admin",
         "--icon=src/ui/logo.ico",
+        "--noconsole"
     ]
 )
 
