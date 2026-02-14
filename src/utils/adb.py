@@ -14,3 +14,16 @@ def change_size(adb_adress):
     pat = re.compile(r"\d{1,5}")
     width, height = pat.findall(result.stdout.decode())
     cfg.width, cfg.height = int(width), int(height)
+
+
+def restart():
+    adb_run(
+        [cfg.adb_dir, "kill-server"],
+        stdout=PIPE,
+        stderr=PIPE,
+    )
+    adb_run(
+        [cfg.adb_dir, "start-server"],
+        stdout=PIPE,
+        stderr=PIPE,
+    )

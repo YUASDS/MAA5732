@@ -171,6 +171,34 @@ class Click:
         return detail
 
     @control_tragger
+    def ocr(
+        self,
+        range=0.5,
+        sleep_time=cfg.sleep_time,
+    ):
+        time.sleep(sleep_time)
+        logger.debug(f"StartOcr")
+        random_num = random.random()
+        detail = self.context.run_task(
+            f"Ocr_{random_num}",
+            {
+                f"Ocr_{random_num}": {
+                    "timeout": 1500,
+                    "recognition": "OCR",
+                }
+            },
+        )
+        if not detail:
+            return
+        last_node = detail.nodes[-1]
+        raw_detail_list = last_node.recognition.raw_detail["all"]
+        res_dict = {}
+        for raw_detail in raw_detail_list:
+            if raw_detail["score"] > range:
+                res_dict[raw_detail["text"]] = raw_detail["score"]
+        return res_dict
+
+    @control_tragger
     def start_5732(self, name):
         logger.debug("Start 5732")
         trans_dict = {"B服": "bilibili", "官服": "cn"}

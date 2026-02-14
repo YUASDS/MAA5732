@@ -11,7 +11,7 @@ from maa.context import Context
 from maa.notification_handler import NotificationHandler, NotificationType
 
 from src.utils.configs import cfg
-from src.utils.adb import change_size
+from src.utils.adb import restart
 from src.utils.model import StopException
 
 
@@ -89,10 +89,12 @@ class TaskerManager:
             cfg.adb_dir
         )
         if not adb_devices:
-            logger.error("No ADB device found.")
-            exit()
+            logger.info("Restart ADB ")
+            restart()
+            adb_devices = Toolkit.find_adb_devices() or Toolkit.find_adb_devices(
+                cfg.adb_dir
+            )
 
-       
         device = adb_devices[0]
         self.controller = AdbController(
             adb_path=device.adb_path,
