@@ -24,7 +24,7 @@ class Supervision(MyCustomAction):
         :param context: 运行上下文
         :return: 是否执行成功。
         """
-        logger.info(f"{name} Start")
+        logger.info(f"监察密令 开始")
         clicker = Click(context)
         #  点击危机管理-OCR识别率低
         clicker.click_rate(0.74, 0.89)
@@ -47,7 +47,7 @@ class Supervision(MyCustomAction):
         # clicker.ocr_click("确定")
         clicker.click_rate(0.2, 0.3)
         clicker.return_home()
-        logger.info(f"{name} Finish")
+        logger.info(f"监察密令 结束")
         return True
 
     def stop(self) -> None:

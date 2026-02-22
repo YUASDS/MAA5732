@@ -24,7 +24,7 @@ class Guild(MyCustomAction):
         :param context: 运行上下文
         :return: 是否执行成功。
         """
-        logger.info(f"{name} Start")
+        logger.info(f"工会捐赠 开始")
         click = Click(context)
         # 整备中心
         click.click_rate(0.829, 0.911)
@@ -38,7 +38,7 @@ class Guild(MyCustomAction):
         click.ocr_click("全部", roi=[0, 0, 0.3, 1])
         click.click_blink()
         click.return_home()
-        logger.info(f"{name} Finish")
+        logger.info(f"工会捐赠 完成")
         return True
 
     def stop(self) -> None:

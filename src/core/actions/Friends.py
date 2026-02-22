@@ -21,7 +21,7 @@ class Friends(MyCustomAction):
         :param context: 运行上下文
         :return: 是否执行成功。
         """
-        logger.info(f"{name} Start")
+        logger.info(f"好友 开始")
         clicker = Click(context)
         # 点击整备中心
         clicker.click_rate(0.829, 0.911)
@@ -31,7 +31,7 @@ class Friends(MyCustomAction):
         # 赠送
         clicker.click_rate(0.898, 0.861)
         clicker.return_home()
-        logger.info(f"{name} Finish")
+        logger.info(f"好友 完成")
         return True
 
     def stop(self) -> None:

@@ -25,7 +25,7 @@ class Purchase(MyCustomAction):
         :param context: 运行上下文
         :return: 是否执行成功。
         """
-        logger.info(f"{name} Start")
+        logger.info(f"采购中心 开始")
         click = Click(context)
         self.clicker = click
         action_param = cfg.settings[1][name]
@@ -37,7 +37,7 @@ class Purchase(MyCustomAction):
         if action_param["FriendShopcheckBox"]:
             self.frends_shop()
         click.return_home()
-        logger.info(f"{name} Finish")
+        logger.info(f"采购中心 完成")
         return True
 
     # 454750

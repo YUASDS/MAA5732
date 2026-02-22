@@ -52,7 +52,7 @@ class Raid(MyCustomAction):
         :param context: 运行上下文
         :return: 是否执行成功。
         """
-        logger.info(f"{name} Start")
+        logger.info(f"副本 开始")
         action_param = json.loads(argv.custom_action_param)
         run_param = default_cfg.copy()
         if action_param != {}:
@@ -68,7 +68,7 @@ class Raid(MyCustomAction):
             self.RaidDark()
         if run_param["RaidFightcheckBox"]:
             self.RaidFight()
-        logger.info(f"{name} Finish")
+        logger.info(f"副本 完成")
         return True
 
     def RaidDark(self):

@@ -21,7 +21,7 @@ class StartToHomeAction(MyCustomAction):
         """
         动态识别屏幕内容，执行相应操作，最终到达游戏主界面。
         """
-        logger.info(f"{name} Start")
+        logger.info(f"启动 开始")
         clicker = Click(context)
 
         # 启动应用
@@ -124,7 +124,7 @@ class StartToHomeAction(MyCustomAction):
         clicker.ocr_click("确定")
         clicker.click_rate(0.902, 0.062)
 
-        logger.info(f"{name} Finish")
+        logger.info(f"启动 结束")
         return True
 
     def stop(self) -> None:

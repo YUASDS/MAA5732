@@ -89,7 +89,7 @@ class TaskerManager:
             cfg.adb_dir
         )
         if not adb_devices:
-            logger.info("Restart ADB ")
+            logger.info("重启ADB ")
             restart()
             adb_devices = Toolkit.find_adb_devices() or Toolkit.find_adb_devices(
                 cfg.adb_dir
@@ -110,7 +110,7 @@ class TaskerManager:
         self.tasker.bind(self.resource, self.controller)
         self._register_custom_action()
         self.init_flag_queue.put(1)
-        logger.info("Init successeed!!!")
+        logger.info("初始化成功!!!")
 
     def add_action(self, name: str):
         def warp_action(custon_action: type[MyCustomAction]):
