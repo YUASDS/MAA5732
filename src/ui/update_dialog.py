@@ -14,6 +14,7 @@ from src.core import version
 
 class UpdateDialog(QDialog):
     dismissed = Signal()
+    download_requested = Signal()
 
     def __init__(self, latest, url, body, parent=None):
         super().__init__(parent)
@@ -40,7 +41,7 @@ class UpdateDialog(QDialog):
         self.dismiss_btn = QPushButton("不再显示", self)
         self.dismiss_btn.setObjectName("DismissButton")
         later_btn = QPushButton("稍后再说", self)
-        download_btn = QPushButton("前往下载", self)
+        download_btn = QPushButton("下载更新", self)
         download_btn.setObjectName("DownloadButton")
         btn_row.addWidget(self.dismiss_btn)
         btn_row.addStretch(1)
@@ -53,8 +54,7 @@ class UpdateDialog(QDialog):
         download_btn.clicked.connect(self._on_download)
 
     def _on_download(self):
-        if self.url:
-            QDesktopServices.openUrl(QUrl(self.url))
+        self.download_requested.emit()
         self.accept()
 
     def _on_dismiss(self):

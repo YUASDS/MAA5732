@@ -225,6 +225,36 @@ class Click:
         return res_dict
 
     @control_tragger
+    def ocr_roi(self, roi, sleep_time=cfg.sleep_time):
+        """在指定比例区域[ x, y, w, h ]内OCR,返回[(text, score, box), ...]"""
+        time.sleep(sleep_time)
+        random_num = random.random()
+        roi = [
+            roi[0] * cfg.width,
+            roi[1] * cfg.height,
+            roi[2] * cfg.width,
+            roi[3] * cfg.height,
+        ]
+        logger.debug(f"StartOcrRoi: {roi}")
+        detail = self.context.run_task(
+            f"OcrRoi_{random_num}",
+            {
+                f"OcrRoi_{random_num}": {
+                    "timeout": 1500,
+                    "recognition": "OCR",
+                    "roi": roi,
+                }
+            },
+        )
+        if not detail:
+            return []
+        raw_detail_list = detail.nodes[-1].recognition.raw_detail["all"]
+        return [
+            (item["text"], item.get("score", 0), item.get("box", []))
+            for item in raw_detail_list
+        ]
+
+    @control_tragger
     def start_5732(self, name):
         logger.debug("Start 5732")
         if cfg.game_path:

@@ -1,11 +1,15 @@
 # 导入sys
+import os
 import sys
 import re
 import html
 import threading
+import subprocess
 from functools import partial
 from typing import Union
 from loguru import logger
+from PySide6.QtCore import QObject, Signal, QTimer, QUrl, Qt
+from PySide6.QtGui import QDesktopServices
 from PySide6.QtWidgets import (
     QApplication,
     QWidget,
@@ -14,8 +18,9 @@ from PySide6.QtWidgets import (
     QComboBox,
     QFileDialog,
     QMessageBox,
+    QProgressDialog,
+    QSystemTrayIcon,
 )
-from PySide6.QtCore import QObject, Signal, QTimer, Qt
 from subprocess import run as adb_run, PIPE
 
 from src.ui.ui import Ui_Form
@@ -23,7 +28,14 @@ from src.ui.theme import apply_theme
 from src.ui.title_bar import TitleBar
 from src.ui.update_dialog import UpdateDialog
 from src.utils.configs import cfg, save_confg
-from src.utils.updater import check_update, is_newer
+from src.utils.updater import (
+    check_update,
+    is_newer,
+    get_download_info,
+    download_file,
+    verify_sha256,
+    extract_zip,
+)
 from src.utils.adb import close_emulator
 from src.utils.click import start_by_exe
 from src.core import version
@@ -36,6 +48,8 @@ class MySignal(QObject):
     finish = Signal(str)
     update = Signal(object, object, object, bool)
     devices = Signal(list, list)
+    download_progress = Signal(int, int)
+    download_done = Signal(bool, str, str)
 
 
 class LogSignals(QObject):
@@ -71,14 +85,17 @@ class MyWidget(QWidget):
         self.tasker_thread.start()
         self.signal = MySignal()
         self.signal.button.connect(self.print_gui)
-        self.signal.finish.connect(self.on_finish)
-        self.signal.update.connect(self.on_update_result)
-        self.signal.devices.connect(self.on_devices)
+        self.signal.finish.connect(self.handle_finish)
+        self.signal.update.connect(self.handle_update_result)
+        self.signal.devices.connect(self.handle_devices)
+        self.signal.download_progress.connect(self.on_download_progress)
+        self.signal.download_done.connect(self.on_download_done)
 
         self.ui = Ui_Form()
         self.ui.setupUi(self)
         self.title_bar = TitleBar(self)
         self.ui.verticalLayout_3.insertWidget(0, self.title_bar)
+        self.setup_tray()
 
         self.text_browser = self.ui.textBrowser
         # 创建日志信号对象
@@ -148,6 +165,9 @@ class MyWidget(QWidget):
 
     def append_log(self, level, message):
         """支持HTML格式的彩色日志"""
+        match = re.match(r"^(启动|工会捐赠|邮件领取|采购中心|基建收菜|管理局|好友|副本|监察密令) 开始$", message)
+        if match:
+            self.ui.TaskStatusLabel.setText(f"正在执行: {match.group(1)}")
         color_map = {
             "ERROR": "#E85D75",
             "WARNING": "#E8A33D",
@@ -244,12 +264,14 @@ class MyWidget(QWidget):
 
     def start(self):
         if self.state == 0:
+            self.ui.TaskStatusLabel.setText("运行中...")
             self.change_running_state()
             json_data = self.state_to_json()
             self.tasker_thread.add_task(self.state_to_json())
             cfg.settings = json_data
             save_confg()
         else:
+            self.ui.TaskStatusLabel.setText("已停止")
             # self.change_running_state()
             self.tasker_thread.cancle_task()
 
@@ -370,7 +392,7 @@ class MyWidget(QWidget):
             pass
         return address
 
-    def on_devices(self, names: list, addresses: list):
+    def handle_devices(self, names: list, addresses: list):
         combo = self.ui.DeviceCombo
         combo.blockSignals(True)
         combo.clear()
@@ -434,12 +456,24 @@ class MyWidget(QWidget):
     def finish_callback(self):
         self.signal.finish.emit(cfg.after_finish)
 
-    def on_finish(self, after_finish: str):
+    def handle_finish(self, after_finish: str):
+        self.ui.TaskStatusLabel.setText("任务完成")
+        QApplication.beep()
+        if QSystemTrayIcon.isSystemTrayAvailable():
+            self.tray.showMessage(
+                "MAA5732", "任务已完成", QSystemTrayIcon.MessageIcon.Information, 5000
+            )
         if "关闭模拟器" in after_finish:
             close_emulator()
         if after_finish in ("关闭软件", "关闭软件和关闭模拟器"):
             logger.info("任务结束,关闭软件")
-            QTimer.singleShot(500, QApplication.quit)
+            QTimer.singleShot(800, QApplication.quit)
+
+    def setup_tray(self):
+        self.tray = QSystemTrayIcon(self)
+        self.tray.setIcon(self.windowIcon())
+        self.tray.setToolTip("MAA5732")
+        self.tray.show()
 
     def check_update(self, manual: bool = False):
         threading.Thread(
@@ -450,7 +484,7 @@ class MyWidget(QWidget):
         latest, url, body = check_update()
         self.signal.update.emit(latest, url, body, manual)
 
-    def on_update_result(self, latest, url, body, manual: bool):
+    def handle_update_result(self, latest, url, body, manual: bool):
         if latest is None:
             logger.warning("检查更新失败")
             if manual:
@@ -468,12 +502,150 @@ class MyWidget(QWidget):
             return
         dialog = UpdateDialog(latest, url, body, self)
         dialog.dismissed.connect(lambda: self._dismiss_update(latest))
+        dialog.download_requested.connect(self.download_update)
         dialog.exec()
 
     def _dismiss_update(self, latest: str):
         cfg.dismissed_update = latest
         save_confg()
         logger.info(f"已忽略版本 {latest} 的更新提醒")
+
+    def download_update(self):
+        if not getattr(sys, "frozen", False):
+            QMessageBox.information(
+                self,
+                "更新",
+                "开发环境无法自动更新,请前往GitHub下载最新版",
+            )
+            QDesktopServices.openUrl(QUrl("https://github.com/YUASDS/MAA5732/releases"))
+            return
+        self._progress = QProgressDialog("正在下载更新...", None, 0, 0, self)
+        self._progress.setWindowTitle("下载更新")
+        self._progress.setWindowModality(Qt.WindowModality.WindowModal)
+        self._progress.setMinimumDuration(0)
+        self._progress.setCancelButton(None)
+        self._progress.show()
+        threading.Thread(target=self._download_update_worker, daemon=True).start()
+
+    def _download_update_worker(self):
+        try:
+            kind, name, url, sha256 = get_download_info()
+            if not url:
+                self.signal.download_done.emit(False, "", "获取下载地址失败")
+                return
+            exe_dir = os.path.dirname(sys.executable)
+            update_dir = os.path.join(exe_dir, "update")
+            os.makedirs(update_dir, exist_ok=True)
+            dest = os.path.join(update_dir, name)
+            if os.path.exists(dest):
+                os.remove(dest)
+            download_file(
+                url,
+                dest,
+                progress_cb=lambda done, total: self.signal.download_progress.emit(
+                    done, total
+                ),
+            )
+            if not verify_sha256(dest, sha256):
+                os.remove(dest)
+                self.signal.download_done.emit(False, "", "文件校验失败,请重试")
+                return
+            if kind == "zip":
+                payload_dir = os.path.join(update_dir, "payload")
+                if os.path.isdir(payload_dir):
+                    shutil.rmtree(payload_dir, ignore_errors=True)
+                new_exe = extract_zip(dest, payload_dir)
+                os.remove(dest)
+                if not new_exe:
+                    self.signal.download_done.emit(False, "", "压缩包内未找到exe文件")
+                    return
+                self.signal.download_done.emit(True, kind, new_exe)
+            else:
+                self.signal.download_done.emit(True, kind, dest)
+        except Exception as e:
+            logger.exception(f"下载更新失败: {e}")
+            self.signal.download_done.emit(False, "", f"下载失败: {e}")
+
+    def on_download_progress(self, done, total):
+        if hasattr(self, "_progress"):
+            if total:
+                self._progress.setMaximum(total)
+                self._progress.setValue(done)
+            else:
+                self._progress.setRange(0, 0)
+
+    def on_download_done(self, ok, kind, info):
+        if hasattr(self, "_progress"):
+            self._progress.close()
+        if not ok:
+            QMessageBox.warning(self, "更新失败", info)
+            return
+        reply = QMessageBox.question(
+            self,
+            "更新",
+            "新版本下载完成,是否退出并自动更新?",
+            QMessageBox.Yes | QMessageBox.No,
+        )
+        if reply == QMessageBox.Yes:
+            self._apply_update(kind, info)
+
+    def _apply_update(self, kind, payload):
+        current_exe = sys.executable
+        exe_dir = os.path.dirname(current_exe)
+        bat_path = os.path.join(exe_dir, "update", "apply_update.bat")
+        if kind == "zip":
+            assets_dir = os.path.join(os.path.dirname(payload), "assets")
+            has_assets = os.path.isdir(assets_dir)
+            bat_content = (
+                "@echo off\r\n"
+                ":retry\r\n"
+                f'move /y "{payload}" "{current_exe}" >nul 2>&1\r\n'
+                "if errorlevel 1 (\r\n"
+                "    timeout /t 1 /nobreak >nul\r\n"
+                "    goto retry\r\n"
+                ")\r\n"
+            )
+            if has_assets:
+                bat_content += (
+                    f'if exist "{exe_dir}\\assets\\config\\config.json" (\r\n'
+                    f'    copy /y "{exe_dir}\\assets\\config\\config.json" "{os.path.dirname(payload)}\\config_backup.json" >nul 2>&1\r\n'
+                    ")\r\n"
+                    f'rmdir /s /q "{exe_dir}\\assets"\r\n'
+                    f'move /y "{assets_dir}" "{exe_dir}\\assets" >nul 2>&1\r\n'
+                    f'if exist "{os.path.dirname(payload)}\\config_backup.json" (\r\n'
+                    f'    if not exist "{exe_dir}\\assets\\config" mkdir "{exe_dir}\\assets\\config"\r\n'
+                    f'    copy /y "{os.path.dirname(payload)}\\config_backup.json" "{exe_dir}\\assets\\config\\config.json" >nul 2>&1\r\n'
+                    ")\r\n"
+                )
+            bat_content += (
+                f'start "" "{current_exe}"\r\n'
+                'del "%~f0"\r\n'
+            )
+        else:
+            bat_content = (
+                "@echo off\r\n"
+                ":retry\r\n"
+                f'move /y "{payload}" "{current_exe}" >nul 2>&1\r\n'
+                "if errorlevel 1 (\r\n"
+                "    timeout /t 1 /nobreak >nul\r\n"
+                "    goto retry\r\n"
+                ")\r\n"
+                f'start "" "{current_exe}"\r\n'
+                'del "%~f0"\r\n'
+            )
+        with open(bat_path, "w", encoding="utf-8") as f:
+            f.write(bat_content)
+        try:
+            subprocess.Popen(
+                ["cmd", "/c", bat_path],
+                cwd=exe_dir,
+                creationflags=subprocess.CREATE_NO_WINDOW,
+            )
+        except Exception as e:
+            logger.exception(f"启动更新脚本失败: {e}")
+            QMessageBox.warning(self, "更新", "自动更新失败,请手动下载")
+            return
+        QApplication.quit()
 
 
 # 程序入口

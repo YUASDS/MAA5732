@@ -58,17 +58,25 @@ class Purchase(MyCustomAction):
         click.ocr_click("兑换中心")
         click.swape([0.1, 0.9, 10, 10], [0.12, 0.1, 10, 10], 1000)
         click.ocr_click("友情兑换")
-        self.purchase("狂乱", 3)
-        self.purchase("狄斯", 3)
-        self.purchase("记忆", 3)
+        self.purchase("搜索", 3)
+        self.purchase("梦影", 1)
+        self.purchase("回响", 2)
+        self.purchase("监测",1)
+        self.purchase("边界",10)
+        self.purchase("狂乱", 10)
+        self.purchase("狄斯", 10)
+        self.purchase("记忆", 10)
+        self.purchase("一阶", 40)
+        self.purchase("低阶", 40)
+        self.purchase("技能", 40)
 
-    # TODO
     def purchase(self, name, num):
         click = self.clicker
         click.ocr_click(name)
-        for _ in range(num):
-            res = click.TemplateMatch("ADD.png", 0.7)
-        click.ocr_click("购买", roi=[0.5, 0.75, 1, 1])
+        if num>1:
+            for _ in range(num-1):
+                res = click.TemplateMatch("ADD.png", 0.7)
+        click.ocr_click("购买", roi=[0.71, 0.75, 1, 1])
         click.click_blink()
 
     def stop(self) -> None:

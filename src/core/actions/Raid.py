@@ -1,4 +1,5 @@
 import json
+import re
 import time
 from loguru import logger
 from maa.context import Context
@@ -104,7 +105,11 @@ class Raid(MyCustomAction):
         clicker.click_rate(0.9, 0.2)
         clicker.ocr_click("锈河")
         clicker.ocr_click(first_action)
-        clicker.ocr_click(second_action)
+
+        res = clicker.ocr_click(second_action)
+        if first_action =="废墟" and not res:
+            clicker.swape([0.2,0.8],[0.2,0.4],0.3)
+            res = clicker.ocr_click(second_action)
         if second_action == "极域" and level >= "4":
             level = "3"
         if first_action == "记忆风暴":
@@ -117,6 +122,7 @@ class Raid(MyCustomAction):
                 clicker.ocr_click(level, roi=[0, 0.41, 1, 0.2])
         else:
             clicker.ocr_click(level, roi=[0.3, 0.5, 1, 1])
+
         clicker.ocr_click("连续扫荡")
         # 当体力副本无体力时
         detail = clicker.ocr_click("取消")
@@ -147,6 +153,44 @@ class Raid(MyCustomAction):
         clicker.ocr_click("完成")
         clicker.return_home()
 
+    def add_range(self,num):
+        click = self.clicker
+        for _ in range(num):
+            res = click.TemplateMatch("ADD.png", 0.7)
+        return res
+
+    def reduce_range(self,num):
+        click = self.clicker
+        for _ in range(num):
+            res = click.TemplateMatch("REDUCE.png", 0.7)
+        return res
+    def get_num(self):
+        """读取扫荡界面当前选择次数,返回int,读取失败返回None"""
+        click = self.clicker
+        # "选择次数8" 所在区域: 0.25,0.58 - 0.40,0.62
+        items = click.ocr_roi([0.25, 0.58, 0.15, 0.04])
+        texts = [item[0] for item in items]
+        logger.debug(f"选择次数区域OCR: {texts}")
+        if not texts:
+            return None
+        # 数字与标签合并在同一识别结果: "选择次数8"
+        match = re.search(r"选择次数(\d+)", "".join(texts))
+        if match:
+            return int(match.group(1))
+        # 标签与数字分开识别: ["选择次数", "8"]
+        for i, text in enumerate(texts):
+            if "选择次数" in text:
+                if i + 1 < len(texts) and texts[i + 1].isdigit():
+                    return int(texts[i + 1])
+                digits = re.findall(r"\d+", text)
+                if digits:
+                    return int(digits[-1])
+                return None
+        # 未识别到标签,区域内单独的数字兜底
+        for text in texts:
+            if text.isdigit():
+                return int(text)
+        return None
     def stop(self) -> None:
 
         pass

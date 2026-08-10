@@ -50,6 +50,7 @@ from PySide6.QtWidgets import (
     QLineEdit,
     QPushButton,
     QSizePolicy,
+    QSpacerItem,
     QStackedWidget,
     QTabWidget,
     QTextBrowser,
@@ -410,6 +411,33 @@ class Ui_Form(object):
 
         self.horizontalLayout_15 = QHBoxLayout()
         self.horizontalLayout_15.setObjectName("horizontalLayout_15")
+        self.DeviceLabel = QLabel(self.working)
+        self.DeviceLabel.setObjectName("DeviceLabel")
+
+        self.horizontalLayout_15.addWidget(self.DeviceLabel)
+
+        self.DeviceCombo = QComboBox(self.working)
+        self.DeviceCombo.setObjectName("DeviceCombo")
+        self.DeviceCombo.setMinimumSize(QSize(220, 0))
+
+        self.horizontalLayout_15.addWidget(self.DeviceCombo)
+
+        self.DeviceRefreshButton = QPushButton(self.working)
+        self.DeviceRefreshButton.setObjectName("DeviceRefreshButton")
+
+        self.horizontalLayout_15.addWidget(self.DeviceRefreshButton)
+
+        self.horizontalSpacer = QSpacerItem(
+            40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum
+        )
+
+        self.horizontalLayout_15.addItem(self.horizontalSpacer)
+
+        self.TaskStatusLabel = QLabel(self.working)
+        self.TaskStatusLabel.setObjectName("TaskStatusLabel")
+
+        self.horizontalLayout_15.addWidget(self.TaskStatusLabel)
+
         self.LinkStartButton = QPushButton(self.working)
         self.LinkStartButton.setObjectName("LinkStartButton")
         sizePolicy1 = QSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
@@ -488,27 +516,6 @@ class Ui_Form(object):
         self.verticalLayout_14.addLayout(self.horizontalLayout_19)
 
         self.verticalLayout_13.addWidget(self.GameBox)
-
-        self.DeviceBox = QGroupBox(self.settings)
-        self.DeviceBox.setObjectName("DeviceBox")
-        self.horizontalLayout_21 = QHBoxLayout(self.DeviceBox)
-        self.horizontalLayout_21.setObjectName("horizontalLayout_21")
-        self.DeviceLabel = QLabel(self.DeviceBox)
-        self.DeviceLabel.setObjectName("DeviceLabel")
-
-        self.horizontalLayout_21.addWidget(self.DeviceLabel)
-
-        self.DeviceCombo = QComboBox(self.DeviceBox)
-        self.DeviceCombo.setObjectName("DeviceCombo")
-
-        self.horizontalLayout_21.addWidget(self.DeviceCombo)
-
-        self.DeviceRefreshButton = QPushButton(self.DeviceBox)
-        self.DeviceRefreshButton.setObjectName("DeviceRefreshButton")
-
-        self.horizontalLayout_21.addWidget(self.DeviceRefreshButton)
-
-        self.verticalLayout_13.addWidget(self.DeviceBox)
 
         self.RunBox = QGroupBox(self.settings)
         self.RunBox.setObjectName("RunBox")
@@ -621,6 +628,15 @@ class Ui_Form(object):
             QCoreApplication.translate("Form", "\u4f53\u529b\u526f\u672c", None)
         )
         self.LogBox.setTitle("")
+        self.DeviceLabel.setText(
+            QCoreApplication.translate("Form", "\u8bbe\u5907", None)
+        )
+        self.DeviceRefreshButton.setText(
+            QCoreApplication.translate("Form", "\u5237\u65b0", None)
+        )
+        self.TaskStatusLabel.setText(
+            QCoreApplication.translate("Form", "\u7a7a\u95f2", None)
+        )
         self.LinkStartButton.setText(
             QCoreApplication.translate("Form", "Link Start\uff01", None)
         )
@@ -678,15 +694,6 @@ class Ui_Form(object):
         )
         self.AfterFinishLabel.setText(
             QCoreApplication.translate("Form", "\u7ed3\u675f\u540e\u884c\u4e3a", None)
-        )
-        self.DeviceBox.setTitle(
-            QCoreApplication.translate("Form", "\u8bbe\u5907\u8bbe\u7f6e", None)
-        )
-        self.DeviceLabel.setText(
-            QCoreApplication.translate("Form", "ADB\u8bbe\u5907", None)
-        )
-        self.DeviceRefreshButton.setText(
-            QCoreApplication.translate("Form", "\u5237\u65b0", None)
         )
 
     # retranslateUi

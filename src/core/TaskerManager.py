@@ -112,6 +112,40 @@ class TaskerManager:
         return devices
 
     def _wait_device(self):
+        """优先直接连接所选设备,失败则轮询查找,可被停止操作取消"""
+        if cfg.adb_address:
+            device = self._build_selected_device()
+            try:
+                controller = AdbController(
+                    adb_path=device.adb_path,
+                    address=device.address,
+                    screencap_methods=device.screencap_methods,
+                    input_methods=MaaAdbInputMethodEnum.AdbShell,
+                    config={},
+                )
+                controller.post_connection().wait()
+                logger.info(f"已连接所选ADB设备: {cfg.adb_address}")
+                return device
+            except Exception as e:
+                logger.warning(
+                    f"所选设备 {cfg.adb_address} 连接失败: {e},等待设备上线..."
+                )
+        return self._wait_device_polling()
+
+    def _build_selected_device(self):
+        from maa.define import MaaAdbScreencapMethodEnum
+        from maa.toolkit import AdbDevice
+
+        return AdbDevice(
+            name=cfg.adb_address,
+            adb_path=cfg.adb_dir,
+            address=cfg.adb_address,
+            screencap_methods=MaaAdbScreencapMethodEnum.All,
+            input_methods=MaaAdbInputMethodEnum.AdbShell,
+            config={},
+        )
+
+    def _wait_device_polling(self):
         """轮询查找ADB设备:先连接模拟器端口,再尝试自动检测,必要时重启ADB,可被停止操作取消"""
         logger.info("尝试寻找ADB设备")
         start_server()
@@ -156,6 +190,7 @@ class TaskerManager:
                     return True
 
             custon_action.run = warp_custom_stop
+            return custon_action
 
         return warp_action
 
