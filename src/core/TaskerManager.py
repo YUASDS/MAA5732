@@ -1,4 +1,5 @@
 import queue
+import time
 from loguru import logger
 
 from maa.resource import Resource
@@ -11,7 +12,8 @@ from maa.context import Context
 from maa.notification_handler import NotificationHandler, NotificationType
 
 from src.utils.configs import cfg
-from src.utils.adb import restart
+from src.utils.adb import start_server, restart, connect_adb_devices
+from src.utils.click import STOP
 from src.utils.model import StopException
 
 
@@ -85,17 +87,7 @@ class TaskerManager:
         self.resource = Resource()
         res_job = self.resource.post_bundle("assets/resource")
         res_job.wait()
-        adb_devices = Toolkit.find_adb_devices() or Toolkit.find_adb_devices(
-            cfg.adb_dir
-        )
-        if not adb_devices:
-            logger.info("重启ADB ")
-            restart()
-            adb_devices = Toolkit.find_adb_devices() or Toolkit.find_adb_devices(
-                cfg.adb_dir
-            )
-
-        device = adb_devices[0]
+        device = self._wait_device()
         self.controller = AdbController(
             adb_path=device.adb_path,
             address=device.address,
@@ -111,6 +103,44 @@ class TaskerManager:
         self._register_custom_action()
         self.init_flag_queue.put(1)
         logger.info("初始化成功!!!")
+
+    def _find_devices(self):
+        """优先使用Maa自动检测,回退到自带ADB"""
+        devices = Toolkit.find_adb_devices()
+        if not devices:
+            devices = Toolkit.find_adb_devices(cfg.adb_dir)
+        return devices
+
+    def _wait_device(self):
+        """轮询查找ADB设备:先连接模拟器端口,再尝试自动检测,必要时重启ADB,可被停止操作取消"""
+        logger.info("尝试寻找ADB设备")
+        start_server()
+        connect_adb_devices([cfg.adb_address] if cfg.adb_address else None)
+        attempt = 0
+        while True:
+            attempt += 1
+            devices = self._find_devices()
+            if cfg.adb_address:
+                for device in devices:
+                    if device.address == cfg.adb_address:
+                        return device
+                connect_adb_devices([cfg.adb_address])
+                if attempt == 1 or attempt % 5 == 0:
+                    logger.info(
+                        f"等待指定ADB设备 {cfg.adb_address} 上线,已尝试{attempt}次..."
+                    )
+            elif devices:
+                return devices[0]
+            else:
+                connect_adb_devices()
+                if attempt == 1:
+                    logger.info("未找到ADB设备,请确认模拟器已启动...")
+                elif attempt % 5 == 0:
+                    logger.info(f"已尝试{attempt}次,重启ADB服务器...")
+                    restart()
+            if not STOP.empty():
+                raise StopException("取消等待ADB设备")
+            time.sleep(2)
 
     def add_action(self, name: str):
         def warp_action(custon_action: type[MyCustomAction]):
@@ -135,3 +165,18 @@ class TaskerManager:
 
 
 TASKER_MANAGER = TaskerManager()
+
+
+def list_adb_devices():
+    """返回当前已连接的ADB设备列表"""
+    try:
+        Toolkit.init_option(cfg.tool_kit_option)
+        connect_adb_devices([cfg.adb_address] if cfg.adb_address else None)
+        return (
+            Toolkit.find_adb_devices()
+            or Toolkit.find_adb_devices(cfg.adb_dir)
+            or []
+        )
+    except Exception as e:
+        logger.warning(f"查找ADB设备失败: {e}")
+        return []

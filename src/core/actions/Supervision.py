@@ -29,6 +29,7 @@ class Supervision(MyCustomAction):
         #  点击危机管理-OCR识别率低
         clicker.click_rate(0.74, 0.89)
         clicker.ocr_click("监察密令")
+        clicker.ocr_rate_click("深度监察密令",0.04, 0.06)
         clicker.ocr_click("任务")
         clicker.ocr_click("每日")
         clicker.TemplateMatch("一键领取.png")

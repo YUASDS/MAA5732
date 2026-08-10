@@ -1,6 +1,9 @@
 import time
 import queue
+import os
+import shlex
 import random
+import subprocess
 
 from loguru import logger
 from maa.context import Context
@@ -22,6 +25,29 @@ def control_tragger(func):
         return func(*args, **kwargs)
 
     return func_wrapper
+
+
+def start_by_exe():
+    """根据配置的游戏地址和附加参数启动游戏"""
+    if not cfg.game_path:
+        logger.warning("未设置游戏地址")
+        return False
+    if not os.path.exists(cfg.game_path):
+        logger.warning(f"游戏地址不存在: {cfg.game_path}")
+        return False
+    args = [cfg.game_path]
+    if cfg.game_args:
+        args.extend(shlex.split(cfg.game_args))
+    logger.info(f"使用游戏地址启动: {' '.join(args)}")
+    try:
+        cfg.game_process = subprocess.Popen(
+            args, cwd=os.path.dirname(cfg.game_path)
+        )
+        logger.info(f"游戏进程已启动, PID: {cfg.game_process.pid}")
+        return True
+    except Exception as e:
+        logger.exception(f"启动游戏失败: {e}")
+        return False
 
 
 class Click:
@@ -201,6 +227,9 @@ class Click:
     @control_tragger
     def start_5732(self, name):
         logger.debug("Start 5732")
+        if cfg.game_path:
+            start_by_exe()
+            return
         trans_dict = {"B服": "bilibili", "官服": "cn"}
         server = trans_dict[name]
         package = (
