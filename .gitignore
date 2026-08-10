@@ -7,6 +7,7 @@ __pycache__/
 test
 assets
 logs
+.vscode
 
 # C extensions
 *.so
