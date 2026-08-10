@@ -21,7 +21,7 @@ from PySide6.QtWidgets import (
     QProgressDialog,
     QSystemTrayIcon,
 )
-from subprocess import run as adb_run, PIPE
+from subprocess import run as adb_run, PIPE, CREATE_NO_WINDOW
 
 from src.ui.ui import Ui_Form
 from src.ui.theme import apply_theme
@@ -385,6 +385,7 @@ class MyWidget(QWidget):
                 stdout=PIPE,
                 stderr=PIPE,
                 timeout=8,
+                creationflags=CREATE_NO_WINDOW,
             )
             model = result.stdout.decode(errors="ignore").strip()
             if model:

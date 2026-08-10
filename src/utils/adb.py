@@ -1,7 +1,8 @@
 import re
+import subprocess
 
 # PIPE
-from subprocess import run as adb_run, DEVNULL, PIPE
+from subprocess import DEVNULL, PIPE
 from loguru import logger
 from src.utils.configs import cfg as cfg
 
@@ -17,6 +18,12 @@ EMULATOR_ADDRESSES = [
     "127.0.0.1:62025",
     "127.0.0.1:21503",  # 网易MuMu?
 ]
+
+
+def adb_run(cmd, **kwargs):
+    """运行adb命令,不弹出命令行窗口"""
+    kwargs.setdefault("creationflags", subprocess.CREATE_NO_WINDOW)
+    return subprocess.run(cmd, **kwargs)
 
 
 def change_size(adb_adress):
