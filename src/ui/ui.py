@@ -46,8 +46,11 @@ from PySide6.QtWidgets import (
     QComboBox,
     QGroupBox,
     QHBoxLayout,
+    QLabel,
+    QLineEdit,
     QPushButton,
     QSizePolicy,
+    QSpacerItem,
     QStackedWidget,
     QTabWidget,
     QTextBrowser,
@@ -60,7 +63,7 @@ class Ui_Form(object):
     def setupUi(self, Form):
         if not Form.objectName():
             Form.setObjectName("Form")
-        Form.resize(642, 543)
+        Form.resize(680, 580)
         icon = QIcon()
         icon.addFile("assets/resource/image/logo.ico", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
         Form.setWindowIcon(icon)
@@ -333,6 +336,11 @@ class Ui_Form(object):
         self.verticalLayout_9.setObjectName("verticalLayout_9")
         self.verticalLayout_7 = QVBoxLayout()
         self.verticalLayout_7.setObjectName("verticalLayout_7")
+        self.Raid_ActivityRaidcheckBox = QCheckBox(self.Raid)
+        self.Raid_ActivityRaidcheckBox.setObjectName("Raid_ActivityRaidcheckBox")
+
+        self.verticalLayout_7.addWidget(self.Raid_ActivityRaidcheckBox)
+
         self.Raid_RaidDarkcheckBox = QCheckBox(self.Raid)
         self.Raid_RaidDarkcheckBox.setObjectName("Raid_RaidDarkcheckBox")
         self.Raid_RaidDarkcheckBox.setChecked(True)
@@ -408,6 +416,33 @@ class Ui_Form(object):
 
         self.horizontalLayout_15 = QHBoxLayout()
         self.horizontalLayout_15.setObjectName("horizontalLayout_15")
+        self.DeviceLabel = QLabel(self.working)
+        self.DeviceLabel.setObjectName("DeviceLabel")
+
+        self.horizontalLayout_15.addWidget(self.DeviceLabel)
+
+        self.DeviceCombo = QComboBox(self.working)
+        self.DeviceCombo.setObjectName("DeviceCombo")
+        self.DeviceCombo.setMinimumSize(QSize(220, 0))
+
+        self.horizontalLayout_15.addWidget(self.DeviceCombo)
+
+        self.DeviceRefreshButton = QPushButton(self.working)
+        self.DeviceRefreshButton.setObjectName("DeviceRefreshButton")
+
+        self.horizontalLayout_15.addWidget(self.DeviceRefreshButton)
+
+        self.horizontalSpacer = QSpacerItem(
+            40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum
+        )
+
+        self.horizontalLayout_15.addItem(self.horizontalSpacer)
+
+        self.TaskStatusLabel = QLabel(self.working)
+        self.TaskStatusLabel.setObjectName("TaskStatusLabel")
+
+        self.horizontalLayout_15.addWidget(self.TaskStatusLabel)
+
         self.LinkStartButton = QPushButton(self.working)
         self.LinkStartButton.setObjectName("LinkStartButton")
         sizePolicy1 = QSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
@@ -429,6 +464,89 @@ class Ui_Form(object):
         self.settings = QWidget()
         self.settings.setObjectName("settings")
         self.settings.setMouseTracking(False)
+        self.verticalLayout_13 = QVBoxLayout(self.settings)
+        self.verticalLayout_13.setObjectName("verticalLayout_13")
+        self.UpdateBox = QGroupBox(self.settings)
+        self.UpdateBox.setObjectName("UpdateBox")
+        self.horizontalLayout_16 = QHBoxLayout(self.UpdateBox)
+        self.horizontalLayout_16.setObjectName("horizontalLayout_16")
+        self.CheckUpdatecheckBox = QCheckBox(self.UpdateBox)
+        self.CheckUpdatecheckBox.setObjectName("CheckUpdatecheckBox")
+        self.CheckUpdatecheckBox.setChecked(True)
+
+        self.horizontalLayout_16.addWidget(self.CheckUpdatecheckBox)
+
+        self.CheckUpdateButton = QPushButton(self.UpdateBox)
+        self.CheckUpdateButton.setObjectName("CheckUpdateButton")
+
+        self.horizontalLayout_16.addWidget(self.CheckUpdateButton)
+
+        self.verticalLayout_13.addWidget(self.UpdateBox)
+
+        self.GameBox = QGroupBox(self.settings)
+        self.GameBox.setObjectName("GameBox")
+        self.verticalLayout_14 = QVBoxLayout(self.GameBox)
+        self.verticalLayout_14.setObjectName("verticalLayout_14")
+        self.horizontalLayout_18 = QHBoxLayout()
+        self.horizontalLayout_18.setObjectName("horizontalLayout_18")
+        self.GamePathLabel = QLabel(self.GameBox)
+        self.GamePathLabel.setObjectName("GamePathLabel")
+
+        self.horizontalLayout_18.addWidget(self.GamePathLabel)
+
+        self.GamePathEdit = QLineEdit(self.GameBox)
+        self.GamePathEdit.setObjectName("GamePathEdit")
+
+        self.horizontalLayout_18.addWidget(self.GamePathEdit)
+
+        self.BrowseButton = QPushButton(self.GameBox)
+        self.BrowseButton.setObjectName("BrowseButton")
+
+        self.horizontalLayout_18.addWidget(self.BrowseButton)
+
+        self.verticalLayout_14.addLayout(self.horizontalLayout_18)
+
+        self.horizontalLayout_19 = QHBoxLayout()
+        self.horizontalLayout_19.setObjectName("horizontalLayout_19")
+        self.GameArgsLabel = QLabel(self.GameBox)
+        self.GameArgsLabel.setObjectName("GameArgsLabel")
+
+        self.horizontalLayout_19.addWidget(self.GameArgsLabel)
+
+        self.GameArgsEdit = QLineEdit(self.GameBox)
+        self.GameArgsEdit.setObjectName("GameArgsEdit")
+
+        self.horizontalLayout_19.addWidget(self.GameArgsEdit)
+
+        self.verticalLayout_14.addLayout(self.horizontalLayout_19)
+
+        self.verticalLayout_13.addWidget(self.GameBox)
+
+        self.RunBox = QGroupBox(self.settings)
+        self.RunBox.setObjectName("RunBox")
+        self.verticalLayout_15 = QVBoxLayout(self.RunBox)
+        self.verticalLayout_15.setObjectName("verticalLayout_15")
+        self.AutoRuncheckBox = QCheckBox(self.RunBox)
+        self.AutoRuncheckBox.setObjectName("AutoRuncheckBox")
+
+        self.verticalLayout_15.addWidget(self.AutoRuncheckBox)
+
+        self.horizontalLayout_20 = QHBoxLayout()
+        self.horizontalLayout_20.setObjectName("horizontalLayout_20")
+        self.AfterFinishLabel = QLabel(self.RunBox)
+        self.AfterFinishLabel.setObjectName("AfterFinishLabel")
+
+        self.horizontalLayout_20.addWidget(self.AfterFinishLabel)
+
+        self.AfterFinishCombo = QComboBox(self.RunBox)
+        self.AfterFinishCombo.setObjectName("AfterFinishCombo")
+
+        self.horizontalLayout_20.addWidget(self.AfterFinishCombo)
+
+        self.verticalLayout_15.addLayout(self.horizontalLayout_20)
+
+        self.verticalLayout_13.addWidget(self.RunBox)
+
         self.tabWidget.addTab(self.settings, "")
 
         self.verticalLayout_3.addWidget(self.tabWidget)
@@ -508,6 +626,9 @@ class Ui_Form(object):
         self.Raid_RaidDarkcheckBox.setText(
             QCoreApplication.translate("Form", "\u6df1\u4e95", None)
         )
+        self.Raid_ActivityRaidcheckBox.setText(
+            QCoreApplication.translate("Form", "\u6d3b\u52a8\u626b\u8361", None)
+        )
         self.Raid_RaidRivercheckBox.setText(
             QCoreApplication.translate("Form", "\u8bb0\u5fc6\u98ce\u66b4", None)
         )
@@ -515,6 +636,15 @@ class Ui_Form(object):
             QCoreApplication.translate("Form", "\u4f53\u529b\u526f\u672c", None)
         )
         self.LogBox.setTitle("")
+        self.DeviceLabel.setText(
+            QCoreApplication.translate("Form", "\u8bbe\u5907", None)
+        )
+        self.DeviceRefreshButton.setText(
+            QCoreApplication.translate("Form", "\u5237\u65b0", None)
+        )
+        self.TaskStatusLabel.setText(
+            QCoreApplication.translate("Form", "\u7a7a\u95f2", None)
+        )
         self.LinkStartButton.setText(
             QCoreApplication.translate("Form", "Link Start\uff01", None)
         )
@@ -532,6 +662,46 @@ class Ui_Form(object):
         self.tabWidget.setTabText(
             self.tabWidget.indexOf(self.settings),
             QCoreApplication.translate("Form", "\u8bbe\u7f6e", None),
+        )
+        self.UpdateBox.setTitle(
+            QCoreApplication.translate("Form", "\u66f4\u65b0\u68c0\u6d4b", None)
+        )
+        self.CheckUpdatecheckBox.setText(
+            QCoreApplication.translate("Form", "\u542f\u52a8\u65f6\u68c0\u67e5\u66f4\u65b0", None)
+        )
+        self.CheckUpdateButton.setText(
+            QCoreApplication.translate("Form", "\u68c0\u67e5\u66f4\u65b0", None)
+        )
+        self.GameBox.setTitle(
+            QCoreApplication.translate("Form", "\u6e38\u620f\u8bbe\u7f6e", None)
+        )
+        self.GamePathLabel.setText(
+            QCoreApplication.translate("Form", "\u6e38\u620f\u5730\u5740", None)
+        )
+        self.GamePathEdit.setPlaceholderText(
+            QCoreApplication.translate(
+                "Form", "\u6a21\u62df\u5668\u6216\u6e38\u620fexe\u8def\u5f84,\u7559\u7a7a\u5219\u4f7f\u7528ADB\u542f\u52a8", None
+            )
+        )
+        self.BrowseButton.setText(
+            QCoreApplication.translate("Form", "\u6d4f\u89c8...", None)
+        )
+        self.GameArgsLabel.setText(
+            QCoreApplication.translate("Form", "\u9644\u52a0\u53c2\u6570", None)
+        )
+        self.GameArgsEdit.setPlaceholderText(
+            QCoreApplication.translate(
+                "Form", "\u542f\u52a8\u53c2\u6570,\u4ee5\u7a7a\u683c\u5206\u9694", None
+            )
+        )
+        self.RunBox.setTitle(
+            QCoreApplication.translate("Form", "\u8fd0\u884c\u8bbe\u7f6e", None)
+        )
+        self.AutoRuncheckBox.setText(
+            QCoreApplication.translate("Form", "\u542f\u52a8\u540e\u81ea\u52a8\u8fd0\u884c", None)
+        )
+        self.AfterFinishLabel.setText(
+            QCoreApplication.translate("Form", "\u7ed3\u675f\u540e\u884c\u4e3a", None)
         )
 
     # retranslateUi

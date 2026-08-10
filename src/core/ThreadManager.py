@@ -6,37 +6,49 @@ from src.core.actions import *
 from src.core.TaskerManager import TASKER_MANAGER
 from src.utils.parse import json2pipline
 from src.utils.click import STOP
+from src.utils.model import StopException
 
 
 class TaskerThread(threading.Thread):
     task: dict
     task_queue = queue.Queue()
     change_func: Callable
+    finish_func: Callable
+    manual_stop = False
 
-    def __init__(self, change_func: Callable, name=None):
+    def __init__(self, change_func: Callable, finish_func: Callable = None, name=None):
         threading.Thread.__init__(self, name=name)
         self.change_func = change_func
+        self.finish_func = finish_func or (lambda: None)
 
     def run(self) -> None:
-        try:
-            # 主要是防止启动卡顿
-            TASKER_MANAGER.init()
-            while True:
-                task = self.task_queue.get()
+        while True:
+            task = self.task_queue.get()
+            try:
+                TASKER_MANAGER.init()
                 TASKER_MANAGER.tasker.post_task("1", task).wait().get()
-                global STOP
-                STOP.put(1)
+            except StopException:
+                logger.warning("任务已取消")
                 self.change_func()
-        except Exception as e:
-            logger.exception(e)
+                continue
+            except Exception as e:
+                logger.exception(e)
+                continue
+            global STOP
+            STOP.put(1)
+            self.change_func()
+            if not self.manual_stop:
+                self.finish_func()
 
     def add_task(self, json_data: list[dict]):
         self.task_queue.put(json2pipline(json_data))
+        self.manual_stop = False
         global STOP
         STOP.queue.clear()
 
     def cancle_task(self):
         logger.warning("START TO STOP!!!")
+        self.manual_stop = True
         global STOP
         STOP.put(1)
         self.task_queue.queue.clear()

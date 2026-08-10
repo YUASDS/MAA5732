@@ -23,7 +23,7 @@ class Construction(MyCustomAction):
         :param context: 运行上下文
         :return: 是否执行成功。
         """
-        logger.info(f"{name} Start")
+        logger.info(f"基建收菜 开始")
         clicker = Click(context)
         # 点击整备中心 OCR识别率低
         clicker.click_rate(0.829, 0.911)
@@ -36,7 +36,7 @@ class Construction(MyCustomAction):
         [clicker.click_rate(0.908, 0.889) for _ in range(40)]
 
         clicker.return_home()
-        logger.info(f"{name} Finish")
+        logger.info(f"基建收菜 完成")
         return True
 
     def stop(self) -> None:

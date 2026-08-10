@@ -24,7 +24,7 @@ class Bureau(MyCustomAction):
         :param context: 运行上下文
         :return: 是否执行成功。
         """
-        logger.info(f"{name} Start")
+        logger.info(f"管理局 开始")
         clicker = Click(context)
         #  点击危机管理-OCR识别率低
         clicker.click_rate(0.74, 0.89)
@@ -44,7 +44,7 @@ class Bureau(MyCustomAction):
         clicker.click_blink()
         clicker.click_blink()
         clicker.return_home()
-        logger.info(f"{name} Finish")
+        logger.info(f"管理局 完成")
         return True
 
     def stop(self) -> None:

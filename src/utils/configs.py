@@ -94,12 +94,29 @@ class cfg:
     height = 720
     sleep_time = config["sleep_time"]
     settings = config["settings"]
+    game_path = config.get("game_path", "")
+    game_args = config.get("game_args", "")
+    auto_run = config.get("auto_run", False)
+    after_finish = config.get("after_finish", "无")
+    check_update = config.get("check_update", True)
+    dismissed_update = config.get("dismissed_update", "")
+    adb_address = config.get("adb_address", "")
+    activity_remaining = config.get("activity_remaining", {"date": "", "items": []})
+    game_process = None
 
 
 def save_confg():
     this_config = {
         "sleep_time": cfg.sleep_time,
         "settings": cfg.settings,
+        "game_path": cfg.game_path,
+        "game_args": cfg.game_args,
+        "auto_run": cfg.auto_run,
+        "after_finish": cfg.after_finish,
+        "check_update": cfg.check_update,
+        "dismissed_update": cfg.dismissed_update,
+        "adb_address": cfg.adb_address,
+        "activity_remaining": cfg.activity_remaining,
     }
     with open(
         os.path.join(curr_dir, "assets", "config", "config.json"), "w", encoding="utf-8"

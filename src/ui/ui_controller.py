@@ -1,23 +1,59 @@
 # 导入sys
+import os
 import sys
 import re
+import html
+import threading
+import subprocess
 from functools import partial
 from typing import Union
 from loguru import logger
-from PySide6.QtWidgets import QApplication, QWidget, QPushButton, QCheckBox, QComboBox
-from PySide6.QtCore import QObject, Signal
+from PySide6.QtCore import QObject, Signal, QTimer, QUrl, Qt
+from PySide6.QtGui import QDesktopServices
+from PySide6.QtWidgets import (
+    QApplication,
+    QWidget,
+    QPushButton,
+    QCheckBox,
+    QComboBox,
+    QFileDialog,
+    QMessageBox,
+    QProgressDialog,
+    QSystemTrayIcon,
+)
+from subprocess import run as adb_run, PIPE
 
 from src.ui.ui import Ui_Form
+from src.ui.theme import apply_theme
+from src.ui.title_bar import TitleBar
+from src.ui.update_dialog import UpdateDialog
 from src.utils.configs import cfg, save_confg
+from src.utils.updater import (
+    check_update,
+    is_newer,
+    get_download_info,
+    download_file,
+    verify_sha256,
+    extract_zip,
+)
+from src.utils.adb import close_emulator
+from src.utils.click import start_by_exe
+from src.core import version
 from src.core.ThreadManager import TaskerThread
+from src.core.TaskerManager import list_adb_devices
 
 
 class MySignal(QObject):
     button = Signal(QPushButton, str)
+    finish = Signal(str)
+    update = Signal(object, object, object, bool)
+    devices = Signal(list, list)
+    download_progress = Signal(int, int)
+    download_done = Signal(bool, str, str)
 
 
 class LogSignals(QObject):
-    log_message = Signal(str)
+    log_message = Signal(str, str)
 
 
 # 去除ANSI颜色代码的辅助函数
@@ -30,8 +66,7 @@ def remove_ansi_codes(text):
 def log_to_textbrowser(message, signals):
     """处理日志消息并发送到TextBrowser"""
     cleaned_message = remove_ansi_codes(message.record["message"])
-    # print(cleaned_message)  # 打印到控制台
-    signals.log_message.emit(cleaned_message)
+    signals.log_message.emit(message.record["level"].name, cleaned_message)
 
 
 # 继承QWidget类,以获取其属性和方法
@@ -44,14 +79,23 @@ class MyWidget(QWidget):
 
     def __init__(self):
         super().__init__()
-        self.tasker_thread = TaskerThread(self.change_running_state)
+        self.setWindowFlag(Qt.WindowType.FramelessWindowHint)
+        self.tasker_thread = TaskerThread(self.change_running_state, self.finish_callback)
         self.tasker_thread.daemon = True
         self.tasker_thread.start()
         self.signal = MySignal()
         self.signal.button.connect(self.print_gui)
+        self.signal.finish.connect(self.handle_finish)
+        self.signal.update.connect(self.handle_update_result)
+        self.signal.devices.connect(self.handle_devices)
+        self.signal.download_progress.connect(self.handle_download_progress)
+        self.signal.download_done.connect(self.handle_download_done)
 
         self.ui = Ui_Form()
         self.ui.setupUi(self)
+        self.title_bar = TitleBar(self)
+        self.ui.verticalLayout_3.insertWidget(0, self.title_bar)
+        self.setup_tray()
 
         self.text_browser = self.ui.textBrowser
         # 创建日志信号对象
@@ -95,6 +139,7 @@ class MyWidget(QWidget):
         self.add_detail_box(self.ui.Raid_RaidDarkcheckBox)
         self.add_detail_box(self.ui.Raid_RaidFightcheckBox)
         self.add_detail_box(self.ui.Raid_RaidRivercheckBox)
+        self.add_detail_box(self.ui.Raid_ActivityRaidcheckBox)
 
         self.add_detail_box(self.ui.Guild_GuildCombo)
         self.add_detail_box(self.ui.Raid_ResourceCombo)
@@ -105,6 +150,7 @@ class MyWidget(QWidget):
         self.add_detail_box(self.ui.StartToHomeAction_StartAPPcheckBox)
         self.init_combo()
         self.load_from_json(cfg.settings)
+        self.init_settings()
 
     def setup_logger(self):
         """配置loguru使用自定义处理器"""
@@ -118,18 +164,22 @@ class MyWidget(QWidget):
             colorize=True,  # 允许在终端保留颜色
         )
 
-    def append_log(self, message):
+    def append_log(self, level, message):
         """支持HTML格式的彩色日志"""
-        level = "INFO"  # 假设日志级别为INFO
+        match = re.match(r"^(启动|工会捐赠|邮件领取|采购中心|基建收菜|管理局|好友|副本|监察密令) 开始$", message)
+        if match:
+            self.ui.TaskStatusLabel.setText(f"正在执行: {match.group(1)}")
         color_map = {
-            "ERROR": "red",
-            "WARNING": "orange",
-            "INFO": "blue",
-            "DEBUG": "gray",
-            "TRACE": "lightgray",
+            "ERROR": "#E85D75",
+            "WARNING": "#E8A33D",
+            "INFO": "#43D9B5",
+            "DEBUG": "#7A86A0",
+            "TRACE": "#6E7A94",
         }
-        color = color_map.get(level, "black")
-        self.text_browser.append(f'<span style="color:{color}">{message}</span>')
+        color = color_map.get(level, "#E6E9F0")
+        self.text_browser.append(
+            f'<span style="color:{color}">{html.escape(message)}</span>'
+        )
 
     def add_check_box(self, check_box: QCheckBox):
         check_box.clicked.connect(self.checkBox)
@@ -204,19 +254,25 @@ class MyWidget(QWidget):
     def change_running_state(self):
         if self.state == 0:
             self.signal.button.emit(self.ui.LinkStartButton, "Stop")
+            self.ui.LinkStartButton.setProperty("running", True)
             self.state = 1
         else:
             self.signal.button.emit(self.ui.LinkStartButton, "Link Start ! ")
+            self.ui.LinkStartButton.setProperty("running", False)
             self.state = 0
+        self.ui.LinkStartButton.style().unpolish(self.ui.LinkStartButton)
+        self.ui.LinkStartButton.style().polish(self.ui.LinkStartButton)
 
     def start(self):
         if self.state == 0:
+            self.ui.TaskStatusLabel.setText("运行中...")
             self.change_running_state()
             json_data = self.state_to_json()
             self.tasker_thread.add_task(self.state_to_json())
             cfg.settings = json_data
             save_confg()
         else:
+            self.ui.TaskStatusLabel.setText("已停止")
             # self.change_running_state()
             self.tasker_thread.cancle_task()
 
@@ -246,11 +302,361 @@ class MyWidget(QWidget):
                     detail_part[key][inner_key] = inner_value.currentText()
         return [first_part, detail_part]
 
+    def init_settings(self):
+        self.ui.AfterFinishCombo.addItems(
+            ["无", "关闭软件", "关闭模拟器", "关闭软件和关闭模拟器"]
+        )
+        self.ui.CheckUpdatecheckBox.setChecked(cfg.check_update)
+        self.ui.AutoRuncheckBox.setChecked(cfg.auto_run)
+        self.ui.GamePathEdit.setText(cfg.game_path)
+        self.ui.GameArgsEdit.setText(cfg.game_args)
+        self.ui.AfterFinishCombo.setCurrentText(cfg.after_finish)
+
+        self.ui.CheckUpdateButton.clicked.connect(
+            lambda: self.check_update(manual=True)
+        )
+        self.ui.BrowseButton.clicked.connect(self.browse_game)
+        self.ui.CheckUpdatecheckBox.toggled.connect(self.save_settings)
+        self.ui.AutoRuncheckBox.toggled.connect(self.save_settings)
+        self.ui.GamePathEdit.textEdited.connect(self.save_settings)
+        self.ui.GameArgsEdit.textEdited.connect(self.save_settings)
+        self.ui.AfterFinishCombo.currentTextChanged.connect(self.save_settings)
+        self.ui.DeviceRefreshButton.clicked.connect(self.refresh_devices)
+        self.ui.DeviceCombo.currentIndexChanged.connect(self.save_device)
+        self.ui.DeviceCombo.setToolTip("选择要使用的ADB设备,可点击刷新获取最新列表")
+        QTimer.singleShot(1200, self.refresh_devices)
+
+        if cfg.auto_run:
+            QTimer.singleShot(1500, self.auto_start)
+        if cfg.check_update:
+            QTimer.singleShot(3000, self.check_update)
+
+    def refresh_devices(self):
+        if getattr(self, "_refreshing", False):
+            return
+        self._refreshing = True
+        threading.Thread(
+            target=self._refresh_devices_worker, daemon=True
+        ).start()
+
+    def _refresh_devices_worker(self):
+        try:
+            all_names = []
+            all_addresses = []
+            for device in list_adb_devices():
+                name = device.name if device.name else device.address
+                if "/" in name or "\\" in name:
+                    name = device.address
+                all_names.append(name)
+                all_addresses.append(device.address)
+            seen = {}
+            names = []
+            addresses = []
+            for name, address in zip(all_names, all_addresses):
+                key = self._device_key(address)
+                if key in seen:
+                    continue
+                seen[key] = True
+                names.append(name)
+                addresses.append(address)
+            connected_ports = {
+                a.split(":")[1]
+                for a in all_addresses
+                if a.startswith("127.0.0.1:")
+            }
+            filtered = []
+            for name, address in zip(names, addresses):
+                if address.startswith("emulator-"):
+                    port = int(address[len("emulator-"):])
+                    if str(port + 1) in connected_ports:
+                        continue
+                filtered.append((name, address))
+            names = [n for n, _ in filtered]
+            addresses = [a for _, a in filtered]
+            self.signal.devices.emit(names, addresses)
+        finally:
+            self._refreshing = False
+
+    def _device_key(self, address):
+        """通过设备型号识别是否为同一设备,查询失败则用地址本身"""
+        try:
+            result = adb_run(
+                [cfg.adb_dir, "-s", address, "shell", "getprop", "ro.product.model"],
+                stdout=PIPE,
+                stderr=PIPE,
+                timeout=8,
+            )
+            model = result.stdout.decode(errors="ignore").strip()
+            if model:
+                return model
+        except Exception:
+            pass
+        return address
+
+    def handle_devices(self, names: list, addresses: list):
+        combo = self.ui.DeviceCombo
+        combo.blockSignals(True)
+        combo.clear()
+        for name, address in zip(names, addresses):
+            text = f"{name} [{address}]" if name != address else address
+            combo.addItem(text, address)
+        if cfg.adb_address:
+            index = combo.findData(cfg.adb_address)
+            if index >= 0:
+                combo.setCurrentIndex(index)
+            elif not self._is_alias(cfg.adb_address, addresses):
+                combo.addItem(cfg.adb_address, cfg.adb_address)
+                combo.setCurrentIndex(combo.count() - 1)
+        elif combo.count() > 0:
+            combo.setCurrentIndex(0)
+            cfg.adb_address = combo.currentData() or ""
+            save_confg()
+            logger.info(f"已自动选择ADB设备: {cfg.adb_address}")
+        combo.blockSignals(False)
+        logger.debug(f"ADB设备列表已刷新: {combo.count()} 个")
+
+    def _is_alias(self, address, connected):
+        """判断emulator-*地址是否为已连接端口的别名"""
+        if not address.startswith("emulator-"):
+            return False
+        try:
+            port = int(address[len("emulator-"):])
+        except ValueError:
+            return False
+        return f"127.0.0.1:{port + 1}" in connected
+
+    def save_device(self):
+        cfg.adb_address = self.ui.DeviceCombo.currentData() or ""
+        save_confg()
+        logger.info(f"已选择ADB设备: {cfg.adb_address}")
+
+    def auto_start(self):
+        if (
+            cfg.game_path
+            and self.ui.StartToHomeAction_StartAPPcheckBox.isChecked()
+        ):
+            logger.info("自动运行: 按设置的游戏地址启动游戏")
+            start_by_exe()
+        self.start()
+
+    def browse_game(self):
+        path, _ = QFileDialog.getOpenFileName(
+            self, "选择游戏或模拟器程序", "", "可执行文件 (*.exe);;所有文件 (*)"
+        )
+        if path:
+            self.ui.GamePathEdit.setText(path)
+            cfg.game_path = path
+            save_confg()
+            logger.info(f"游戏地址已设置: {path}")
+
+    def save_settings(self):
+        cfg.check_update = self.ui.CheckUpdatecheckBox.isChecked()
+        cfg.auto_run = self.ui.AutoRuncheckBox.isChecked()
+        cfg.game_path = self.ui.GamePathEdit.text()
+        cfg.game_args = self.ui.GameArgsEdit.text()
+        cfg.after_finish = self.ui.AfterFinishCombo.currentText()
+        save_confg()
+
+    def finish_callback(self):
+        self.signal.finish.emit(cfg.after_finish)
+
+    def handle_finish(self, after_finish: str):
+        self.ui.TaskStatusLabel.setText("任务完成")
+        QApplication.beep()
+        if QSystemTrayIcon.isSystemTrayAvailable():
+            self.tray.showMessage(
+                "MAA5732", "任务已完成", QSystemTrayIcon.MessageIcon.Information, 5000
+            )
+        if "关闭模拟器" in after_finish:
+            close_emulator()
+        if after_finish in ("关闭软件", "关闭软件和关闭模拟器"):
+            logger.info("任务结束,关闭软件")
+            QTimer.singleShot(800, QApplication.quit)
+
+    def setup_tray(self):
+        self.tray = QSystemTrayIcon(self)
+        self.tray.setIcon(self.windowIcon())
+        self.tray.setToolTip("MAA5732")
+        self.tray.show()
+
+    def check_update(self, manual: bool = False):
+        threading.Thread(
+            target=self._check_update_worker, args=(manual,), daemon=True
+        ).start()
+
+    def _check_update_worker(self, manual: bool):
+        latest, url, body = check_update()
+        self.signal.update.emit(latest, url, body, manual)
+
+    def handle_update_result(self, latest, url, body, manual: bool):
+        if latest is None:
+            logger.warning("检查更新失败")
+            if manual:
+                QMessageBox.warning(self, "更新检查", "检查更新失败,请检查网络连接")
+            return
+        if not is_newer(latest, version):
+            logger.info(f"当前已是最新版本 {version}")
+            if manual:
+                QMessageBox.information(
+                    self, "更新检查", f"当前已是最新版本 {version}"
+                )
+            return
+        if not manual and cfg.dismissed_update == latest:
+            logger.info(f"已忽略版本 {latest} 的更新提醒")
+            return
+        dialog = UpdateDialog(latest, url, body, self)
+        dialog.dismissed.connect(lambda: self._dismiss_update(latest))
+        dialog.download_requested.connect(self.download_update)
+        dialog.exec()
+
+    def _dismiss_update(self, latest: str):
+        cfg.dismissed_update = latest
+        save_confg()
+        logger.info(f"已忽略版本 {latest} 的更新提醒")
+
+    def download_update(self):
+        if not getattr(sys, "frozen", False):
+            QMessageBox.information(
+                self,
+                "更新",
+                "开发环境无法自动更新,请前往GitHub下载最新版",
+            )
+            QDesktopServices.openUrl(QUrl("https://github.com/YUASDS/MAA5732/releases"))
+            return
+        self._progress = QProgressDialog("正在下载更新...", None, 0, 0, self)
+        self._progress.setWindowTitle("下载更新")
+        self._progress.setWindowModality(Qt.WindowModality.WindowModal)
+        self._progress.setMinimumDuration(0)
+        self._progress.setCancelButton(None)
+        self._progress.show()
+        threading.Thread(target=self._download_update_worker, daemon=True).start()
+
+    def _download_update_worker(self):
+        try:
+            kind, name, url, sha256 = get_download_info()
+            if not url:
+                self.signal.download_done.emit(False, "", "获取下载地址失败")
+                return
+            exe_dir = os.path.dirname(sys.executable)
+            update_dir = os.path.join(exe_dir, "update")
+            os.makedirs(update_dir, exist_ok=True)
+            dest = os.path.join(update_dir, name)
+            if os.path.exists(dest):
+                os.remove(dest)
+            download_file(
+                url,
+                dest,
+                progress_cb=lambda done, total: self.signal.download_progress.emit(
+                    done, total
+                ),
+            )
+            if not verify_sha256(dest, sha256):
+                os.remove(dest)
+                self.signal.download_done.emit(False, "", "文件校验失败,请重试")
+                return
+            if kind == "zip":
+                payload_dir = os.path.join(update_dir, "payload")
+                if os.path.isdir(payload_dir):
+                    shutil.rmtree(payload_dir, ignore_errors=True)
+                new_exe = extract_zip(dest, payload_dir)
+                os.remove(dest)
+                if not new_exe:
+                    self.signal.download_done.emit(False, "", "压缩包内未找到exe文件")
+                    return
+                self.signal.download_done.emit(True, kind, new_exe)
+            else:
+                self.signal.download_done.emit(True, kind, dest)
+        except Exception as e:
+            logger.exception(f"下载更新失败: {e}")
+            self.signal.download_done.emit(False, "", f"下载失败: {e}")
+
+    def handle_download_progress(self, done, total):
+        if hasattr(self, "_progress"):
+            if total:
+                self._progress.setMaximum(total)
+                self._progress.setValue(done)
+            else:
+                self._progress.setRange(0, 0)
+
+    def handle_download_done(self, ok, kind, info):
+        if hasattr(self, "_progress"):
+            self._progress.close()
+        if not ok:
+            QMessageBox.warning(self, "更新失败", info)
+            return
+        reply = QMessageBox.question(
+            self,
+            "更新",
+            "新版本下载完成,是否退出并自动更新?",
+            QMessageBox.Yes | QMessageBox.No,
+        )
+        if reply == QMessageBox.Yes:
+            self._apply_update(kind, info)
+
+    def _apply_update(self, kind, payload):
+        current_exe = sys.executable
+        exe_dir = os.path.dirname(current_exe)
+        bat_path = os.path.join(exe_dir, "update", "apply_update.bat")
+        if kind == "zip":
+            assets_dir = os.path.join(os.path.dirname(payload), "assets")
+            has_assets = os.path.isdir(assets_dir)
+            bat_content = (
+                "@echo off\r\n"
+                ":retry\r\n"
+                f'move /y "{payload}" "{current_exe}" >nul 2>&1\r\n'
+                "if errorlevel 1 (\r\n"
+                "    timeout /t 1 /nobreak >nul\r\n"
+                "    goto retry\r\n"
+                ")\r\n"
+            )
+            if has_assets:
+                bat_content += (
+                    f'if exist "{exe_dir}\\assets\\config\\config.json" (\r\n'
+                    f'    copy /y "{exe_dir}\\assets\\config\\config.json" "{os.path.dirname(payload)}\\config_backup.json" >nul 2>&1\r\n'
+                    ")\r\n"
+                    f'rmdir /s /q "{exe_dir}\\assets"\r\n'
+                    f'move /y "{assets_dir}" "{exe_dir}\\assets" >nul 2>&1\r\n'
+                    f'if exist "{os.path.dirname(payload)}\\config_backup.json" (\r\n'
+                    f'    if not exist "{exe_dir}\\assets\\config" mkdir "{exe_dir}\\assets\\config"\r\n'
+                    f'    copy /y "{os.path.dirname(payload)}\\config_backup.json" "{exe_dir}\\assets\\config\\config.json" >nul 2>&1\r\n'
+                    ")\r\n"
+                )
+            bat_content += (
+                f'start "" "{current_exe}"\r\n'
+                'del "%~f0"\r\n'
+            )
+        else:
+            bat_content = (
+                "@echo off\r\n"
+                ":retry\r\n"
+                f'move /y "{payload}" "{current_exe}" >nul 2>&1\r\n'
+                "if errorlevel 1 (\r\n"
+                "    timeout /t 1 /nobreak >nul\r\n"
+                "    goto retry\r\n"
+                ")\r\n"
+                f'start "" "{current_exe}"\r\n'
+                'del "%~f0"\r\n'
+            )
+        with open(bat_path, "w", encoding="utf-8") as f:
+            f.write(bat_content)
+        try:
+            subprocess.Popen(
+                ["cmd", "/c", bat_path],
+                cwd=exe_dir,
+                creationflags=subprocess.CREATE_NO_WINDOW,
+            )
+        except Exception as e:
+            logger.exception(f"启动更新脚本失败: {e}")
+            QMessageBox.warning(self, "更新", "自动更新失败,请手动下载")
+            return
+        QApplication.quit()
+
 
 # 程序入口
 if __name__ == "__main__":
     # 初始化QApplication,界面展示要包含在QApplication初始化之后,结束之前
     app = QApplication(sys.argv)
+    apply_theme(app)
     # 初始化并展示我们的界面组件
     window = MyWidget()
     window.show()
