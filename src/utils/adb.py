@@ -52,13 +52,31 @@ def start_server():
 
 
 def connect_adb_devices(addresses=None):
-    """尝试连接常见模拟器端口及指定地址的ADB设备"""
+    """尝试连接常见模拟器端口及指定地址的ADB设备,已连接的跳过"""
     targets = list(EMULATOR_ADDRESSES)
     if addresses:
         for address in addresses:
             if address and address not in targets:
                 targets.append(address)
+    if not targets:
+        return
+    try:
+        result = adb_run(
+            [cfg.adb_dir, "devices"],
+            stdout=PIPE,
+            stderr=PIPE,
+            timeout=10,
+        )
+        known = set()
+        for line in result.stdout.decode(errors="ignore").splitlines()[1:]:
+            parts = line.split()
+            if len(parts) >= 2 and parts[1] != "offline":
+                known.add(parts[0])
+    except Exception:
+        known = set()
     for address in targets:
+        if address in known:
+            continue
         try:
             result = adb_run(
                 [cfg.adb_dir, "connect", address],

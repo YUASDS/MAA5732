@@ -88,8 +88,8 @@ class MyWidget(QWidget):
         self.signal.finish.connect(self.handle_finish)
         self.signal.update.connect(self.handle_update_result)
         self.signal.devices.connect(self.handle_devices)
-        self.signal.download_progress.connect(self.on_download_progress)
-        self.signal.download_done.connect(self.on_download_done)
+        self.signal.download_progress.connect(self.handle_download_progress)
+        self.signal.download_done.connect(self.handle_download_done)
 
         self.ui = Ui_Form()
         self.ui.setupUi(self)
@@ -139,6 +139,7 @@ class MyWidget(QWidget):
         self.add_detail_box(self.ui.Raid_RaidDarkcheckBox)
         self.add_detail_box(self.ui.Raid_RaidFightcheckBox)
         self.add_detail_box(self.ui.Raid_RaidRivercheckBox)
+        self.add_detail_box(self.ui.Raid_ActivityRaidcheckBox)
 
         self.add_detail_box(self.ui.Guild_GuildCombo)
         self.add_detail_box(self.ui.Raid_ResourceCombo)
@@ -408,6 +409,9 @@ class MyWidget(QWidget):
                 combo.setCurrentIndex(combo.count() - 1)
         elif combo.count() > 0:
             combo.setCurrentIndex(0)
+            cfg.adb_address = combo.currentData() or ""
+            save_confg()
+            logger.info(f"已自动选择ADB设备: {cfg.adb_address}")
         combo.blockSignals(False)
         logger.debug(f"ADB设备列表已刷新: {combo.count()} 个")
 
@@ -566,7 +570,7 @@ class MyWidget(QWidget):
             logger.exception(f"下载更新失败: {e}")
             self.signal.download_done.emit(False, "", f"下载失败: {e}")
 
-    def on_download_progress(self, done, total):
+    def handle_download_progress(self, done, total):
         if hasattr(self, "_progress"):
             if total:
                 self._progress.setMaximum(total)
@@ -574,7 +578,7 @@ class MyWidget(QWidget):
             else:
                 self._progress.setRange(0, 0)
 
-    def on_download_done(self, ok, kind, info):
+    def handle_download_done(self, ok, kind, info):
         if hasattr(self, "_progress"):
             self._progress.close()
         if not ok:

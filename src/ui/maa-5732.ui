@@ -382,8 +382,15 @@
                <layout class="QVBoxLayout" name="verticalLayout_9">
                 <item>
                  <layout class="QVBoxLayout" name="verticalLayout_7">
-                  <item>
-                   <widget class="QCheckBox" name="Raid_RaidDarkcheckBox">
+                   <item>
+                    <widget class="QCheckBox" name="Raid_ActivityRaidcheckBox">
+                     <property name="text">
+                      <string>活动扫荡</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QCheckBox" name="Raid_RaidDarkcheckBox">
                     <property name="text">
                      <string>深井</string>
                     </property>

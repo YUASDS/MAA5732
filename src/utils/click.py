@@ -246,7 +246,7 @@ class Click:
                 }
             },
         )
-        if not detail:
+        if not detail or not detail.nodes:
             return []
         raw_detail_list = detail.nodes[-1].recognition.raw_detail["all"]
         return [

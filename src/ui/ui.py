@@ -336,6 +336,11 @@ class Ui_Form(object):
         self.verticalLayout_9.setObjectName("verticalLayout_9")
         self.verticalLayout_7 = QVBoxLayout()
         self.verticalLayout_7.setObjectName("verticalLayout_7")
+        self.Raid_ActivityRaidcheckBox = QCheckBox(self.Raid)
+        self.Raid_ActivityRaidcheckBox.setObjectName("Raid_ActivityRaidcheckBox")
+
+        self.verticalLayout_7.addWidget(self.Raid_ActivityRaidcheckBox)
+
         self.Raid_RaidDarkcheckBox = QCheckBox(self.Raid)
         self.Raid_RaidDarkcheckBox.setObjectName("Raid_RaidDarkcheckBox")
         self.Raid_RaidDarkcheckBox.setChecked(True)
@@ -620,6 +625,9 @@ class Ui_Form(object):
         )
         self.Raid_RaidDarkcheckBox.setText(
             QCoreApplication.translate("Form", "\u6df1\u4e95", None)
+        )
+        self.Raid_ActivityRaidcheckBox.setText(
+            QCoreApplication.translate("Form", "\u6d3b\u52a8\u626b\u8361", None)
         )
         self.Raid_RaidRivercheckBox.setText(
             QCoreApplication.translate("Form", "\u8bb0\u5fc6\u98ce\u66b4", None)

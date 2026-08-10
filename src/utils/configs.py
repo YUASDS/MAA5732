@@ -101,6 +101,7 @@ class cfg:
     check_update = config.get("check_update", True)
     dismissed_update = config.get("dismissed_update", "")
     adb_address = config.get("adb_address", "")
+    activity_remaining = config.get("activity_remaining", {"date": "", "items": []})
     game_process = None
 
 
@@ -115,6 +116,7 @@ def save_confg():
         "check_update": cfg.check_update,
         "dismissed_update": cfg.dismissed_update,
         "adb_address": cfg.adb_address,
+        "activity_remaining": cfg.activity_remaining,
     }
     with open(
         os.path.join(curr_dir, "assets", "config", "config.json"), "w", encoding="utf-8"

@@ -158,7 +158,8 @@ class TaskerManager:
                 for device in devices:
                     if device.address == cfg.adb_address:
                         return device
-                connect_adb_devices([cfg.adb_address])
+                if attempt == 1 or attempt % 5 == 0:
+                    connect_adb_devices([cfg.adb_address])
                 if attempt == 1 or attempt % 5 == 0:
                     logger.info(
                         f"等待指定ADB设备 {cfg.adb_address} 上线,已尝试{attempt}次..."
@@ -166,12 +167,16 @@ class TaskerManager:
             elif devices:
                 return devices[0]
             else:
-                connect_adb_devices()
+                if attempt == 1 or attempt % 5 == 0:
+                    connect_adb_devices()
                 if attempt == 1:
                     logger.info("未找到ADB设备,请确认模拟器已启动...")
                 elif attempt % 5 == 0:
                     logger.info(f"已尝试{attempt}次,重启ADB服务器...")
                     restart()
+                    connect_adb_devices(
+                        [cfg.adb_address] if cfg.adb_address else None
+                    )
             if not STOP.empty():
                 raise StopException("取消等待ADB设备")
             time.sleep(2)
