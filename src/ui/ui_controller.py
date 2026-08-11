@@ -264,6 +264,9 @@ class MyWidget(QWidget):
         self.ui.LinkStartButton.style().polish(self.ui.LinkStartButton)
 
     def start(self):
+        if self.state == 1 and not self.tasker_thread.is_busy():
+            logger.warning("检测到状态残留:线程空闲,强制复位后重新启动")
+            self.change_running_state()
         if self.state == 0:
             self.ui.TaskStatusLabel.setText("运行中...")
             self.change_running_state()
@@ -273,7 +276,6 @@ class MyWidget(QWidget):
             save_confg()
         else:
             self.ui.TaskStatusLabel.setText("已停止")
-            # self.change_running_state()
             self.tasker_thread.cancle_task()
 
     def load_from_json(self, data: list[dict]):

@@ -1,5 +1,6 @@
 import queue
 import threading
+import time
 from loguru import logger
 from typing import Callable
 from src.core.actions import *
@@ -8,6 +9,9 @@ from src.utils.parse import json2pipline
 from src.utils.click import STOP
 from src.utils.model import StopException
 
+# 单个任务的执行超时(1小时),超过视为失败,保证线程不永久悬挂
+TASK_TIMEOUT = 600
+
 
 class TaskerThread(threading.Thread):
     task: dict
@@ -15,6 +19,7 @@ class TaskerThread(threading.Thread):
     change_func: Callable
     finish_func: Callable
     manual_stop = False
+    _busy = False
 
     def __init__(self, change_func: Callable, finish_func: Callable = None, name=None):
         threading.Thread.__init__(self, name=name)
@@ -22,23 +27,40 @@ class TaskerThread(threading.Thread):
         self.finish_func = finish_func or (lambda: None)
 
     def run(self) -> None:
+        global STOP
+        initialized = False
         while True:
             task = self.task_queue.get()
+            self._busy = True
+            completed = False
             try:
-                TASKER_MANAGER.init()
-                TASKER_MANAGER.tasker.post_task("1", task).wait().get()
+                if not initialized:
+                    TASKER_MANAGER.init()
+                    initialized = True
+                job = TASKER_MANAGER.tasker.post_task("1", task)
+                deadline = time.time() + TASK_TIMEOUT
+                while not job.done and time.time() < deadline:
+                    if not STOP.empty():
+                        TASKER_MANAGER.tasker.post_stop()
+                    time.sleep(0.5)
+                job.get()
+                completed = job.succeeded
             except StopException:
                 logger.warning("任务已取消")
-                self.change_func()
-                continue
+                initialized = False
             except Exception as e:
                 logger.exception(e)
-                continue
-            global STOP
-            STOP.put(1)
-            self.change_func()
-            if not self.manual_stop:
+                initialized = False
+            finally:
+                self._busy = False
+                STOP.put(1)
+                self.change_func()
+            if completed and not self.manual_stop:
                 self.finish_func()
+
+    def is_busy(self) -> bool:
+        """线程是否正在执行任务(初始化或任务执行中)"""
+        return self._busy
 
     def add_task(self, json_data: list[dict]):
         self.task_queue.put(json2pipline(json_data))

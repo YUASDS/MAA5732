@@ -100,9 +100,22 @@ def connect_adb_devices(addresses=None):
             logger.debug(f"ADB设备已连接: {address}")
 
 
+# 常见模拟器进程名(按优先级)
+EMULATOR_PROCESSES = [
+    "MuMuVMMHeadless.exe",  # MuMu模拟器虚拟机(核心)
+    "MuMuNxMain.exe",       # MuMu模拟器主程序
+    "MuMuNxDevice.exe",     # MuMu设备进程
+    "MuMuRemoteService.exe",  # MuMu远程服务
+    "NoxVMHandle.exe",      # 夜神模拟器
+    "LdVBoxHeadless.exe",   # 雷电模拟器
+    "HD-Player.exe",        # 蓝叠模拟器
+]
+
+
 def close_emulator():
-    """关闭模拟器:先结束本程序启动的游戏进程,再尝试adb emu kill"""
+    """关闭模拟器:结束游戏进程→adb emu kill→结束常见模拟器进程"""
     logger.info("尝试关闭模拟器")
+    # 1) 结束本程序启动的游戏/模拟器进程(含子进程树)
     if cfg.game_process and cfg.game_process.poll() is None:
         try:
             result = adb_run(
@@ -114,13 +127,26 @@ def close_emulator():
                 logger.info("已关闭游戏进程")
         except Exception as e:
             logger.warning(f"关闭游戏进程失败: {e}")
-    try:
-        result = adb_run(
-            [cfg.adb_dir, "emu", "kill"],
-            stdout=PIPE,
-            stderr=PIPE,
-        )
-        if result.returncode == 0:
-            logger.info("已发送关闭模拟器指令")
-    except Exception as e:
-        logger.warning(f"关闭模拟器失败: {e}")
+    # 2) 尝试 adb emu kill(优先所选设备,再默认端口)
+    for address in ([cfg.adb_address] if cfg.adb_address else []) + [None]:
+        try:
+            cmd = [cfg.adb_dir, "emu", "kill"]
+            if address:
+                cmd = [cfg.adb_dir, "-s", address, "emu", "kill"]
+            result = adb_run(cmd, stdout=PIPE, stderr=PIPE)
+            if result.returncode == 0:
+                logger.info(f"已发送关闭模拟器指令: {address or '默认'}")
+        except Exception as e:
+            logger.warning(f"关闭模拟器失败: {e}")
+    # 3) 结束常见模拟器进程(MuMu等不响应adb emu kill时的兜底)
+    for name in EMULATOR_PROCESSES:
+        try:
+            result = adb_run(
+                ["taskkill", "/F", "/IM", name],
+                stdout=PIPE,
+                stderr=PIPE,
+            )
+            if result.returncode == 0:
+                logger.info(f"已关闭模拟器进程: {name}")
+        except Exception as e:
+            logger.warning(f"关闭进程失败 {name}: {e}")

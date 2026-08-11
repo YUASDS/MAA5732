@@ -35,7 +35,16 @@ class StartToHomeAction(MyCustomAction):
             screen_dict = clicker.ocr() or ""  # 获取当前屏幕所有文本
             screen_text = "".join(screen_dict)
             logger.debug(f"OCR识别结果: {screen_text}")
-
+            # 管理局密钥
+            if "管理局密钥" in screen_text:
+                detail = clicker.ocr_click("领取")
+                if detail and detail.status.succeeded:
+                    logger.debug("已领取管理局密钥")
+                clicker.back()
+                time.sleep(1)
+                clicker.back()
+                time.sleep(1)
+                continue
             # 处理系统公告弹窗
             if "系统公告" in screen_text:
                 # 固定坐标点击关闭按钮（源自原ocr_rate_click坐标）

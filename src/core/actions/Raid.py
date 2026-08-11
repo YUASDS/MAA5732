@@ -8,12 +8,14 @@ from maa.context import Context
 from src.core.TaskerManager import TASKER_MANAGER, MyCustomAction
 from src.utils.configs import cfg, save_confg
 from src.utils.click import Click
+from src.utils.model import StopException
 
 # 扫荡界面加号/减号按钮位置(基于当前界面探测)
 SWEEP_PLUS = (0.7164, 0.6458)
 SWEEP_MINUS = (0.2875, 0.6458)
 # 选择次数显示区域
-SWEEP_COUNT_ROI = [0.22, 0.58, 0.5, 0.12]
+
+SWEEP_COUNT_ROI = [0.25, 0.588, 0.1, 0.04]
 
 SOURCE_ITEMS = ("异能源质", "诡秘源质", "坚韧源质", "狂暴源质", "精准源质", "启迪源质")
 
@@ -119,8 +121,10 @@ class Raid(MyCustomAction):
         clicker.ocr_click(first_action)
 
         res = clicker.ocr_click(second_action)
+        if first_action =="废墟" and level >= "4":
+            level = "4"
         if first_action =="废墟" and not res:
-            clicker.swape([0.2,0.8],[0.2,0.4],0.3)
+            clicker.swape([0.1, 0.9, 10, 10], [0.12, 0.1, 10, 10], 1000)
             res = clicker.ocr_click(second_action)
         if second_action == "极域" and level >= "4":
             level = "3"
@@ -187,18 +191,12 @@ class Raid(MyCustomAction):
             int(SWEEP_COUNT_ROI[2] * cfg.width),
             int(SWEEP_COUNT_ROI[3] * cfg.height),
         ]
+
+        # 2. 对指定区域进行OCR
+
         for _ in range(3):
-            detail = click.context.run_task(
-                "get_num_probe",
-                {
-                    "get_num_probe": {
-                        "recognition": "OCR",
-                        "roi": roi,
-                        "timeout": 10000,
-                    }
-                },
-            )
-            num = self._parse_num(self._ocr_texts(detail))
+            res = click.ocr_roi(SWEEP_COUNT_ROI)
+            num = self._parse_num(res)
             if num is not None:
                 return num
             time.sleep(0.5)
@@ -229,21 +227,24 @@ class Raid(MyCustomAction):
 
     def _ocr_texts(self, detail):
         """从任务/识别结果中提取OCR文本列表"""
-        if detail is None:
-            return []
-        if hasattr(detail, "nodes"):
-            if not detail.nodes:
-                return []
-            raw = detail.nodes[-1].recognition.raw_detail
-        else:
-            raw = detail.raw_detail
-        if not raw:
-            return []
-        return [item["text"] for item in raw.get("all", [])]
+        # if detail is None:
+        #     return []
+        # if hasattr(detail, "nodes"):
+        #     if not detail.nodes:
+        #         return []
+        #     raw = detail.nodes[-1].recognition.raw_detail
+        # else:
+        #     raw = detail.raw_detail
+        # if not raw:
+        #     return []
+        return [item["text"] for item in detail.get("all", [])]
 
-    def _parse_num(self, texts, allow_standalone=True):
+    def _parse_num(self, raw_texts, allow_standalone=True):
         """从OCR文本中解析选择次数,超过合理范围(1-20)视为误读"""
-        match = re.search(r"选择次数(\d+)", "".join(texts))
+        texts =""
+        for text_tuple in raw_texts:
+            texts+=text_tuple[0]
+        match = re.search(r"选择次数(\d+)", texts)
         if match:
             return self._clamp_num(int(match.group(1)))
         for i, text in enumerate(texts):
@@ -320,16 +321,27 @@ class Raid(MyCustomAction):
         ]
 
     def ActivityRaid(self):
-        """活动扫荡: 各项各扫3次,体力不足记录剩余任务,当日再次运行则完成剩余"""
+        """活动扫荡: 各项各扫3次,体力不足或手动停止时记录剩余任务,当日再次运行则完成剩余"""
         remaining = self._load_remaining()
         if remaining:
-            logger.info(f"恢复上次剩余任务: {remaining}")
+            logger.info(f"恢复上次剩余任务: {', '.join(item[0] for item in remaining)}")
         else:
             remaining = self._activity_list()
         for i, item in enumerate(remaining):
-            if not self._sweep_item_once(item):
+            try:
+                ok = self._sweep_item_once(item)
+            except StopException:
+                # 手动停止: 当前项扫荡已开始则视为完成,否则保留
+                started = getattr(self, "_sweep_started", False)
+                keep = remaining[i:] if not started else remaining[i + 1 :]
+                self._save_remaining(keep)
+                logger.warning(
+                    f"手动停止,记录剩余任务: {', '.join(item[0] for item in keep)}"
+                )
+                raise
+            if not ok:
                 self._save_remaining(remaining[i:])
-                logger.warning(f"体力不足,记录剩余任务: {remaining[i:]}")
+                logger.warning(f"体力不足,记录剩余任务: {', '.join(item[0] for item in remaining[i:])}")
                 break
         else:
             self._clear_remaining()
@@ -352,6 +364,7 @@ class Raid(MyCustomAction):
 
     def _sweep_item_once(self, item):
         """活动扫荡单项: 进入关卡→选等级→连续扫荡→次数设为3→开始扫荡,体力不足返回False"""
+        self._sweep_started = False
         name, first, second, is_storm = item
         clicker = self.clicker
         logger.info(f"活动扫荡: {name}")
@@ -359,8 +372,10 @@ class Raid(MyCustomAction):
         clicker.ocr_click("锈河")
         clicker.ocr_click(first)
         res = clicker.ocr_click(second)
+        # if first =="废墟" and level >= "4":
+        #     level = "4"
         if first == "废墟" and not res:
-            clicker.swape([0.2, 0.8], [0.2, 0.4], 0.3)
+            clicker.swape([0.1, 0.9, 10, 10], [0.12, 0.1, 10, 10], 1000)
             res = clicker.ocr_click(second)
         if not res or not res.status.succeeded:
             logger.warning(f"{name} 关卡未找到")
@@ -375,8 +390,19 @@ class Raid(MyCustomAction):
                 clicker.ocr_click(level, roi=[0, 0.41, 1, 0.2])
         else:
             level = self.run_param.get("ResourceLevelCombo", "5")
+            if first =="废墟" and level >= "4":
+                level = "4"
+            if first =="极域" and level >= "3":
+                level = "3"
             clicker.ocr_click(level, roi=[0.3, 0.5, 1, 1])
         clicker.ocr_click("连续扫荡")
+                # 当体力副本无体力时
+        detail = clicker.ocr_click("取消")
+        if detail and detail.status.succeeded:
+            clicker.click_blink()
+            clicker.return_home()
+            logger.warning("资源不足 取消扫荡")
+            return False
         if not self._set_sweep_count(3):
             clicker.back()
             clicker.return_home()
@@ -387,6 +413,7 @@ class Raid(MyCustomAction):
             clicker.back()
             clicker.return_home()
             return False
+        self._sweep_started = True
         time.sleep(12)
         clicker.click_rate(0.5, 0.1)
         clicker.ocr_click("完成")
