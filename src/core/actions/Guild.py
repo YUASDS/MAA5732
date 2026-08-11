@@ -26,6 +26,7 @@ class Guild(MyCustomAction):
         """
         logger.info(f"工会捐赠 开始")
         click = Click(context)
+        click.check_return_home()
         # 整备中心
         click.click_rate(0.829, 0.911)
         # 秘盟

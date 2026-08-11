@@ -30,9 +30,10 @@ class Purchase(MyCustomAction):
         :param context: 运行上下文
         :return: 是否执行成功。
         """
-        logger.info(f"采购中心 开始")
         click = Click(context)
-        self.clicker = click
+        self.clicker= click
+        self.clicker.check_return_home()
+        logger.info(f"采购中心 开始")
         action_param = cfg.settings[1][name]
         #  点击危机管理-OCR识别率低
         click.click_rate(0.74, 0.89)
@@ -63,21 +64,32 @@ class Purchase(MyCustomAction):
         click.ocr_click("兑换中心")
         click.swape([0.1, 0.9, 10, 10], [0.12, 0.1, 10, 10], 1000)
         click.ocr_click("友情兑换")
-        self.purchase("搜索", 3)
-        self.purchase("梦影", 1)
-        self.purchase("回响", 2)
-        self.purchase("监测",1)
-        self.purchase("边界",10)
-        self.purchase("狂乱", 10)
-        self.purchase("狄斯", 10)
-        self.purchase("记忆", 10)
-        self.purchase("一阶", 40)
-        self.purchase("低阶", 40)
-        self.purchase("技能", 40)
+        
+        # 定义购买清单（顺序保持原有）
+        purchase_list = [
+            ("搜索", 3),
+            ("梦影", 1),
+            ("回响", 2),
+            ("监测", 1),
+            ("边界", 10),
+            ("狂乱", 10),
+            ("狄斯", 10),
+            ("记忆", 10),
+            ("一阶", 40),
+            ("低阶", 40),
+            ("技能", 40),
+        ]
+
+        for name, count in purchase_list:
+            res = self.purchase(name, count)
+            if res :break
 
     def purchase(self, name, num):
         click = self.clicker
-        click.ocr_click(name)
+        res = click.ocr_click(name)
+        if not res or not res.status.succeeded:
+            logger.warning(f"没有找到{name}")
+            return
         time.sleep(1)
         current = self.get_shop_num()
         if current is None:
@@ -92,9 +104,11 @@ class Purchase(MyCustomAction):
                 stall += 1
                 if stall >= 2:
                     logger.warning(
-                        f"{name} 数量无法增加到{target},当前{current},可能已达限购"
+                        f"{name} 数量无法增加到{target},当前{current},可能缺少友情点,结束任务"
                     )
-                    break
+                    click.ocr_click("购买", roi=[0.71, 0.75, 1, 1])
+                    click.click_blink()
+                    return 1
             else:
                 stall = 0
                 current = new

@@ -27,14 +27,35 @@ def control_tragger(func):
     return func_wrapper
 
 
+def _adb_online(address):
+    """检查指定ADB设备是否在线"""
+    try:
+        result = subprocess.run(
+            [cfg.adb_dir, "-s", address, "shell", "echo", "ok"],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            timeout=8,
+            creationflags=subprocess.CREATE_NO_WINDOW,
+        )
+        return result.returncode == 0
+    except Exception:
+        return False
+
+
 def start_by_exe():
-    """根据配置的游戏地址和附加参数启动游戏"""
+    """根据配置的游戏地址和附加参数启动游戏,已运行则跳过"""
     if not cfg.game_path:
         logger.warning("未设置游戏地址")
         return False
     if not os.path.exists(cfg.game_path):
         logger.warning(f"游戏地址不存在: {cfg.game_path}")
         return False
+    if cfg.game_process and cfg.game_process.poll() is None:
+        logger.info("游戏进程已在运行,跳过重复启动")
+        return True
+    if cfg.adb_address and _adb_online(cfg.adb_address):
+        logger.info(f"ADB设备 {cfg.adb_address} 已在线,跳过启动模拟器")
+        return True
     args = [cfg.game_path]
     if cfg.game_args:
         args.extend(shlex.split(cfg.game_args))
@@ -168,6 +189,14 @@ class Click:
         logger.debug(f"CheckStage_{stage_name} Start")
         detail = self.ocr_click(stage_name)
         logger.debug(f"CheckStage_{stage_name} Finish")
+        return detail
+
+    @control_tragger  
+    def check_return_home(self):
+        detail =self.return_home()
+        if "局长信息" in self.ocr(0.5):
+            detail = self.back()
+        time.sleep(cfg.sleep_time)
         return detail
 
     @control_tragger
