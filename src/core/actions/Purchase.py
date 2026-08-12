@@ -6,7 +6,7 @@ from maa.context import Context
 from maa.custom_action import CustomAction
 
 from src.utils.configs import cfg
-from src.utils.click import Click
+from src.utils.click import Click, stop_sleep
 from src.core.TaskerManager import TASKER_MANAGER, MyCustomAction
 
 # 友情点商店 数量加号按钮与数量显示区域(基于界面探测)
@@ -90,7 +90,7 @@ class Purchase(MyCustomAction):
         if not res or not res.status.succeeded:
             logger.warning(f"没有找到{name}")
             return
-        time.sleep(1)
+        stop_sleep(1)
         current = self.get_shop_num()
         if current is None:
             current = 1
@@ -98,7 +98,7 @@ class Purchase(MyCustomAction):
         stall = 0
         while current < target:
             click.click_rate(*SHOP_PLUS)
-            time.sleep(0.6)
+            stop_sleep(0.6)
             new = self.get_shop_num()
             if new is None or new <= current:
                 stall += 1

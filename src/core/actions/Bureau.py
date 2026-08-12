@@ -5,7 +5,7 @@ from maa.context import Context
 
 from src.core.TaskerManager import TASKER_MANAGER, MyCustomAction
 from src.utils.configs import cfg
-from src.utils.click import Click
+from src.utils.click import Click, stop_sleep
 
 
 name = __file__.split("\\")[-1].split(".")[0]
@@ -34,7 +34,7 @@ class Bureau(MyCustomAction):
         clicker.click_rate(0.9, 0.6)
         clicker.ocr_click("一键")
         # 加载派遣动画
-        time.sleep(3)
+        stop_sleep(3)
         clicker.back()
         # 体力
         clicker.click_rate(0.156, 0.458)
