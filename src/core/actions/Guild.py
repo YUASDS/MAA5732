@@ -5,7 +5,7 @@ from maa.context import Context
 
 
 from src.utils.configs import cfg
-from src.utils.click import Click
+from src.utils.click import Click, stop_sleep
 from src.core.TaskerManager import TASKER_MANAGER, MyCustomAction
 
 name = __file__.split("\\")[-1].split(".")[0]
@@ -33,7 +33,7 @@ class Guild(MyCustomAction):
         click.click_rate(0.9, 0.3)
         # 首次进入 领取奖励
         click.click_rate(0.5, 0.08)
-        time.sleep(2)
+        stop_sleep(2)
         click.ocr_rate_click("签到", 0.9, 0.7)
         click.ocr_rate_click("秘盟捐赠", 0.671, 0.833)
         click.ocr_click("全部", roi=[0, 0, 0.3, 1])

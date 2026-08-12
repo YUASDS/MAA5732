@@ -27,6 +27,16 @@ def control_tragger(func):
     return func_wrapper
 
 
+def stop_sleep(seconds):
+    """可被停止操作打断的等待,停止时抛StopException"""
+    end = time.time() + seconds
+    while time.time() < end:
+        global STOP
+        if not STOP.empty():
+            raise StopException("STOPPING!!!!")
+        time.sleep(0.2)
+
+
 def _adb_online(address):
     """检查指定ADB设备是否在线"""
     try:
@@ -59,7 +69,7 @@ def start_by_exe():
     args = [cfg.game_path]
     if cfg.game_args:
         args.extend(shlex.split(cfg.game_args))
-    logger.info(f"使用游戏地址启动: {' '.join(args)}")
+    logger.info(f"使用游戏地址启动")
     try:
         cfg.game_process = subprocess.Popen(
             args, cwd=os.path.dirname(cfg.game_path)
@@ -90,7 +100,7 @@ class Click:
 
     @control_tragger
     def click_rate(self, x, y, offset_x=5, offset_y=5):
-        time.sleep(cfg.sleep_time)
+        stop_sleep(cfg.sleep_time)
         target = self.trans_from_rate_to_position(
             x, y, offset_x=offset_x, offset_y=offset_y
         )
@@ -108,7 +118,7 @@ class Click:
     def ocr_click(self, text, sleep_time=cfg.sleep_time, roi=None):
         if roi is None:
             roi = [0, 0, 0, 0]
-        time.sleep(sleep_time)
+        stop_sleep(sleep_time)
         random_num = random.random()
         if roi != [0, 0, 0, 0]:
             roi = [
@@ -163,7 +173,7 @@ class Click:
             start[1] = start[1] * cfg.height
             end[0] = end[0] * cfg.width
             end[1] = end[1] * cfg.height
-        time.sleep(cfg.sleep_time)
+        stop_sleep(cfg.sleep_time)
         random_num = random.random()
         logger.debug(f"StartSwape_{random_num}:{start} {end}")
 
@@ -185,7 +195,7 @@ class Click:
 
     @control_tragger  # TODO : check_stage_return_home
     def check_stage_return_home(self, stage_name):
-        time.sleep(cfg.sleep_time)
+        stop_sleep(cfg.sleep_time)
         logger.debug(f"CheckStage_{stage_name} Start")
         detail = self.ocr_click(stage_name)
         logger.debug(f"CheckStage_{stage_name} Finish")
@@ -196,7 +206,7 @@ class Click:
         detail =self.return_home()
         if "局长信息" in self.ocr(0.5):
             detail = self.back()
-        time.sleep(cfg.sleep_time)
+        stop_sleep(cfg.sleep_time)
         return detail
 
     @control_tragger
@@ -205,7 +215,7 @@ class Click:
     ):
         if roi is None:
             roi = [0, 0, 0, 0]
-        time.sleep(sleep_time)
+        stop_sleep(sleep_time)
         logger.debug(f"StartSearch: {text}")
         detail = self.context.run_task(
             text,
@@ -231,7 +241,7 @@ class Click:
         range=0.5,
         sleep_time=cfg.sleep_time,
     ):
-        time.sleep(sleep_time)
+        stop_sleep(sleep_time)
         logger.debug(f"StartOcr")
         random_num = random.random()
         detail = self.context.run_task(
@@ -256,7 +266,7 @@ class Click:
     @control_tragger
     def ocr_roi(self, roi, sleep_time=cfg.sleep_time):
         """在指定比例区域[ x, y, w, h ]内OCR,返回[(text, score, box), ...]"""
-        time.sleep(sleep_time)
+        stop_sleep(sleep_time)
         random_num = random.random()
         roi = [
             roi[0] * cfg.width,
@@ -318,7 +328,7 @@ class Click:
         "模板匹配"
         if roi is None:
             roi = [0, 0, 0, 0]
-        time.sleep(cfg.sleep_time)
+        stop_sleep(cfg.sleep_time)
         random_num = random.random()
         logger.debug(f"StartTemplateMatch_{random_num}:{template} {threshold}")
         detail = self.context.run_task(

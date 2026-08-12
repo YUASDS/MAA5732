@@ -7,7 +7,7 @@ from maa.context import Context
 
 from src.core.TaskerManager import TASKER_MANAGER, MyCustomAction
 from src.utils.configs import cfg, save_confg
-from src.utils.click import Click
+from src.utils.click import Click, stop_sleep
 from src.utils.model import StopException
 
 # 扫荡界面加号/减号按钮位置(基于当前界面探测)
@@ -149,7 +149,7 @@ class Raid(MyCustomAction):
             return
 
         clicker.ocr_click("开始扫荡")
-        time.sleep(10)
+        stop_sleep(10)
         # 升级的情况
         clicker.click_rate(0.5, 0.1)
         clicker.ocr_click("完成")
@@ -163,7 +163,7 @@ class Raid(MyCustomAction):
             logger.warning("资源不足 取消扫荡")
             return
         clicker.ocr_click("开始扫荡")
-        time.sleep(10)
+        stop_sleep(10)
         # 升级的情况
         clicker.click_rate(0.5, 0.1)
         clicker.ocr_click("完成")
@@ -196,10 +196,10 @@ class Raid(MyCustomAction):
 
         for _ in range(3):
             res = click.ocr_roi(SWEEP_COUNT_ROI)
-            num = self._parse_num(res)
+            num = self._parse_num([t for t, _, _ in res])
             if num is not None:
                 return num
-            time.sleep(0.5)
+            stop_sleep(0.5)
         # 2) 截取次数区域放大3倍后识别(数字过小OCR易漏)
         for _ in range(3):
             image = click.context.tasker.controller.post_screencap().wait().get()
@@ -217,7 +217,7 @@ class Raid(MyCustomAction):
             num = self._parse_num(self._ocr_texts(detail))
             if num is not None:
                 return num
-            time.sleep(0.5)
+            stop_sleep(0.5)
         # 3) 整屏兜底
         detail = click.context.run_task(
             "get_num_full",
@@ -227,26 +227,27 @@ class Raid(MyCustomAction):
 
     def _ocr_texts(self, detail):
         """从任务/识别结果中提取OCR文本列表"""
-        # if detail is None:
-        #     return []
-        # if hasattr(detail, "nodes"):
-        #     if not detail.nodes:
-        #         return []
-        #     raw = detail.nodes[-1].recognition.raw_detail
-        # else:
-        #     raw = detail.raw_detail
-        # if not raw:
-        #     return []
-        return [item["text"] for item in detail.get("all", [])]
+        if detail is None:
+            return []
+        if hasattr(detail, "nodes"):
+            if not detail.nodes:
+                return []
+            raw = detail.nodes[-1].recognition.raw_detail
+        else:
+            raw = detail.raw_detail
+        if not raw:
+            return []
+        return [item["text"] for item in raw.get("all", [])]
 
-    def _parse_num(self, raw_texts, allow_standalone=True):
-        """从OCR文本中解析选择次数,超过合理范围(1-20)视为误读"""
-        texts =""
-        for text_tuple in raw_texts:
-            texts+=text_tuple[0]
-        match = re.search(r"选择次数(\d+)", texts)
+    def _parse_num(self, texts, allow_standalone=True):
+        """从OCR文本列表解析选择次数,超过合理范围(1-20)视为误读"""
+        if not texts:
+            return None
+        # 合并识别: "选择次数8"
+        match = re.search(r"选择次数(\d+)", "".join(texts))
         if match:
             return self._clamp_num(int(match.group(1)))
+        # 标签与数字分开: ["选择次数", "8"]
         for i, text in enumerate(texts):
             if "选择次数" in text:
                 if i + 1 < len(texts) and texts[i + 1].isdigit():
@@ -255,6 +256,7 @@ class Raid(MyCustomAction):
                 if digits:
                     return self._clamp_num(int(digits[-1]))
                 break
+        # 独立完整数字词(如 "8"),非字符级匹配
         if allow_standalone:
             for text in texts:
                 if text.isdigit():
@@ -269,13 +271,13 @@ class Raid(MyCustomAction):
     def add_num(self):
         """点击扫荡次数加号,返回新次数,次数无变化(体力不足)返回None"""
         self.clicker.click_rate(*SWEEP_PLUS)
-        time.sleep(0.8)
+        stop_sleep(0.8)
         return self.get_num()
 
     def reduce_num(self):
         """点击扫荡次数减号,返回新次数"""
         self.clicker.click_rate(*SWEEP_MINUS)
-        time.sleep(0.8)
+        stop_sleep(0.8)
         return self.get_num()
 
     def _set_sweep_count(self, target):
@@ -384,6 +386,7 @@ class Raid(MyCustomAction):
         if is_storm:
             level = self.run_param.get("StromLevelCombo", "5")
             if level == "5":
+                clicker.click_rate(0.9, 0.7)
                 clicker.ocr_click("MS", roi=[0, 0.5, 1, 1])
             else:
                 clicker.click_rate(0.7, 0.3)
@@ -392,11 +395,11 @@ class Raid(MyCustomAction):
             level = self.run_param.get("ResourceLevelCombo", "5")
             if first =="废墟" and level >= "4":
                 level = "4"
-            if first =="极域" and level >= "3":
+            if second =="极域" and level >= "3":
                 level = "3"
             clicker.ocr_click(level, roi=[0.3, 0.5, 1, 1])
         clicker.ocr_click("连续扫荡")
-                # 当体力副本无体力时
+        # 当体力副本无体力时
         detail = clicker.ocr_click("取消")
         if detail and detail.status.succeeded:
             clicker.click_blink()
@@ -414,7 +417,7 @@ class Raid(MyCustomAction):
             clicker.return_home()
             return False
         self._sweep_started = True
-        time.sleep(12)
+        stop_sleep(12)
         clicker.click_rate(0.5, 0.1)
         clicker.ocr_click("完成")
         clicker.return_home()

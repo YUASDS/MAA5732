@@ -96,7 +96,10 @@ class TaskerManager:
             config={},
             # config=device.config,
         )
-        self.controller.post_connection().wait()
+        conn_job = self.controller.post_connection()
+        conn_job.wait()
+        if not conn_job.succeeded:
+            raise ConnectionError(f"设备连接失败: {device.address}")
         self.tasker = Tasker()
         # self.tasker = Tasker(notification_handler=MyNotificationHandler())
         self.tasker.bind(self.resource, self.controller)
@@ -123,7 +126,10 @@ class TaskerManager:
                     input_methods=MaaAdbInputMethodEnum.AdbShell,
                     config={},
                 )
-                controller.post_connection().wait()
+                job = controller.post_connection()
+                job.wait()
+                if not job.succeeded:
+                    raise ConnectionError(f"连接失败: {cfg.adb_address}")
                 logger.info(f"已连接所选ADB设备: {cfg.adb_address}")
                 return device
             except Exception as e:
