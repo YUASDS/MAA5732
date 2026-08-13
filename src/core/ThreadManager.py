@@ -10,7 +10,7 @@ from src.utils.click import STOP
 from src.utils.model import StopException
 
 # 单个任务的执行超时(1小时),超过视为失败,保证线程不永久悬挂
-TASK_TIMEOUT = 600
+TASK_TIMEOUT = 3600
 
 
 class TaskerThread(threading.Thread):

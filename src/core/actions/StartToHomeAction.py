@@ -133,9 +133,11 @@ class StartToHomeAction(MyCustomAction):
                 for kw in ["系统公告", "进入管理局", "今日不再弹出", "累计奖励"]
             ) and any(kw in screen_text for kw in ["禁闭者"]):
                 research_time -= 1
-                if research_time < 0:
+                if research_time <= 0:
                     logger.info("已到达游戏主界面")
                     break
+                stop_sleep(0.5)
+                continue
 
             # 若长时间未到达主界面，短暂休眠后继续识别
             stop_sleep(0.5)
