@@ -30,6 +30,7 @@ class StartToHomeAction(MyCustomAction):
             stop_sleep(30)  # 冷启动等待
 
         max_attempts = 60  # 防止死循环
+        research_time = 3
         while max_attempts > 0:
             max_attempts -= 1
             screen_dict = clicker.ocr() or ""  # 获取当前屏幕所有文本
@@ -44,11 +45,13 @@ class StartToHomeAction(MyCustomAction):
                 stop_sleep(1)
                 clicker.back()
                 stop_sleep(1)
+                research_time = 3
                 continue
             # 处理系统公告弹窗
             if "系统公告" in screen_text:
                 # 固定坐标点击关闭按钮（源自原ocr_rate_click坐标）
                 clicker.click_rate(0.1, 0.1, 20, 20)
+                research_time = 3
                 stop_sleep(1)
                 continue
 
@@ -58,6 +61,7 @@ class StartToHomeAction(MyCustomAction):
                 if detail and detail.status.succeeded:
                     logger.info("已点击『进入管理局』")
                     stop_sleep(10)  # 等待加载
+                research_time = 3
                 continue
 
             # 关闭广告
@@ -66,6 +70,7 @@ class StartToHomeAction(MyCustomAction):
                 if detail and detail.status.succeeded:
                     logger.debug("已关闭广告弹窗")
                 stop_sleep(1)
+                research_time = 3
                 continue
 
             # 领取月卡
@@ -76,6 +81,7 @@ class StartToHomeAction(MyCustomAction):
                 clicker.click_blink()
                 logger.debug("已领取月卡")
                 stop_sleep(1)
+                research_time = 3
                 continue
 
             if "贵宾" in screen_text:
@@ -85,6 +91,7 @@ class StartToHomeAction(MyCustomAction):
                     clicker.click_blink()
                     logger.debug("已领取贵宾奖励")
                     stop_sleep(1)
+                research_time = 3
                 continue
 
             # 情绪检测
@@ -93,12 +100,14 @@ class StartToHomeAction(MyCustomAction):
                 stop_sleep(2)
                 clicker.back()  # 返回
                 logger.debug("已处理情绪检测")
+                research_time = 3
                 continue
 
             # 公会战弹窗
             if "确定" in screen_text:
                 clicker.ocr_click("确定")
                 stop_sleep(1)
+                research_time = 3
                 continue
 
             # 服装弹窗
@@ -106,22 +115,29 @@ class StartToHomeAction(MyCustomAction):
                 clicker.click_rate(0.902, 0.062)  # 固定坐标（礼包关闭按钮）
                 logger.debug("已关闭购买礼包弹窗")
                 stop_sleep(1)
+                research_time = 3
                 continue
             if "生日" in screen_text:
                 clicker.back()
                 stop_sleep(1)
+                research_time = 3
                 continue
             if "禁闭者" not in screen_text:
                 clicker.back()
                 stop_sleep(1)
+                research_time = 3
                 continue
             # 判断是否已到达主界面
             if all(
                 kw not in screen_text
                 for kw in ["系统公告", "进入管理局", "今日不再弹出", "累计奖励"]
             ) and any(kw in screen_text for kw in ["禁闭者"]):
-                logger.info("已到达游戏主界面")
-                break
+                research_time -= 1
+                if research_time <= 0:
+                    logger.info("已到达游戏主界面")
+                    break
+                stop_sleep(0.5)
+                continue
 
             # 若长时间未到达主界面，短暂休眠后继续识别
             stop_sleep(0.5)
