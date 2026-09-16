@@ -147,6 +147,7 @@ class MyWidget(QWidget):
         self.widget_button.append(self.ui.FriendsButton)
         self.widget_button.append(self.ui.PurchaseButton)
         self.widget_button.append(self.ui.SupervisionButton)
+        self.widget_button.append(self.ui.BureauButton)
 
         for button in self.widget_button:
             button.clicked.connect(self.buttonClick)
@@ -185,6 +186,8 @@ class MyWidget(QWidget):
         self.add_detail_box(self.ui.Raid_ResourceLevelCombo)
         self.add_detail_box(self.ui.Raid_StromLevelCombo)
         self.add_detail_box(self.ui.Supervision_RewardCombo)
+        self.add_detail_box(self.ui.Bureau_ActionPosCombo)
+        self.add_detail_box(self.ui.Bureau_DailyFirstcheckBox)
         self.add_detail_box(self.ui.StartToHomeAction_ServerCheckcomboBox)
         self.add_detail_box(self.ui.StartToHomeAction_StartAPPcheckBox)
         # 材料刷取: 12 个材料 + 3 个下拉
@@ -279,6 +282,10 @@ class MyWidget(QWidget):
         self.ui.Raid_ResourceLevelCombo.addItems(["1", "2", "3", "4", "5"])
         self.ui.Raid_StromLevelCombo.addItems(["1", "2", "3", "4", "5"])
         self.ui.Supervision_RewardCombo.addItems(["体力", "监察徽印"])
+        # 管理局派遣地点: 每日任务每天只给一次额外奖励, 其余四个是常规派遣点
+        self.ui.Bureau_ActionPosCombo.addItems(
+            ["每日任务", "辛迪加", "新城", "里湾", "砂海"]
+        )
         # 材料刷取
         self.ui.FarmMaterial_SweepCountCombo.addItems([str(i) for i in range(1, 21)])  # 实际能加到多少由弹窗按体力决定
         self.ui.FarmMaterial_ProgressModeCombo.addItems(["自动", "手动"])
@@ -315,6 +322,8 @@ class MyWidget(QWidget):
             self.ui.stackedWidget.setCurrentWidget(self.ui.Purchase)
         if btnName == "SupervisionButton":
             self.ui.stackedWidget.setCurrentWidget(self.ui.Supervision)
+        if btnName == "BureauButton":
+            self.ui.stackedWidget.setCurrentWidget(self.ui.Bureau)
         if btnName == "FarmMaterialButton":
             self.ui.stackedWidget.setCurrentWidget(self.ui.RestPage_1)
         if btnName == "SlectAllButton":

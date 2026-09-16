@@ -62,6 +62,7 @@ DEFAULT_SETTINGS = [
         },
         "Guild": {"GuildCombo": "狄斯币"},
         "Supervision": {"RewardCombo": "体力"},
+        "Bureau": {"ActionPosCombo": "每日任务", "DailyFirstcheckBox": True},
         "StartToHomeAction": {
             "ServerCheckcomboBox": "B服",
             "StartAPPcheckBox": True,
@@ -88,6 +89,8 @@ DEFAULT_CONFIG = {
     "activity_remaining": {"date": "", "items": []},
     # 材料刷取: 主线进度缓存(探测失败时兜底)
     "main_progress": "",
+    # 管理局: 最近一次派"每日任务"的日期(YYYY-MM-DD),用于每天只派一次
+    "bureau_daily_date": "",
 }
 
 CONFIG_PATH = asset_path("config", "config.json")
@@ -150,6 +153,7 @@ class cfg:
     adb_address = config.get("adb_address", "")
     activity_remaining = config.get("activity_remaining", {"date": "", "items": []})
     main_progress = config.get("main_progress", "")
+    bureau_daily_date = config.get("bureau_daily_date", "")
     game_process = None
 
 
@@ -166,6 +170,7 @@ def save_confg():
         "adb_address": cfg.adb_address,
         "activity_remaining": cfg.activity_remaining,
         "main_progress": cfg.main_progress,
+        "bureau_daily_date": cfg.bureau_daily_date,
     }
     os.makedirs(os.path.dirname(CONFIG_PATH), exist_ok=True)
     with open(CONFIG_PATH, "w", encoding="utf-8") as f:

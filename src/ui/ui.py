@@ -131,6 +131,12 @@ class Ui_Form(object):
 
         self.horizontalLayout_6.addWidget(self.BureaucheckBox)
 
+        self.BureauButton = QPushButton(self.SelectBox)
+        self.BureauButton.setObjectName(u"BureauButton")
+        self.BureauButton.setIcon(icon1)
+
+        self.horizontalLayout_6.addWidget(self.BureauButton)
+
 
         self.verticalLayout.addLayout(self.horizontalLayout_6)
 
@@ -375,6 +381,37 @@ class Ui_Form(object):
         self.verticalLayout_8.addWidget(self.Supervision_RewardCombo)
 
         self.stackedWidget.addWidget(self.Supervision)
+        self.Bureau = QWidget()
+        self.Bureau.setObjectName(u"Bureau")
+        self.verticalLayout_bureau = QVBoxLayout(self.Bureau)
+        self.verticalLayout_bureau.setObjectName(u"verticalLayout_bureau")
+        self.horizontalLayout_bureau_pos = QHBoxLayout()
+        self.horizontalLayout_bureau_pos.setSpacing(4)
+        self.horizontalLayout_bureau_pos.setObjectName(u"horizontalLayout_bureau_pos")
+        self.Bureau_ActionPosLabel = QLabel(self.Bureau)
+        self.Bureau_ActionPosLabel.setObjectName(u"Bureau_ActionPosLabel")
+
+        self.horizontalLayout_bureau_pos.addWidget(self.Bureau_ActionPosLabel)
+
+        self.Bureau_ActionPosCombo = QComboBox(self.Bureau)
+        self.Bureau_ActionPosCombo.setObjectName(u"Bureau_ActionPosCombo")
+
+        self.horizontalLayout_bureau_pos.addWidget(self.Bureau_ActionPosCombo)
+
+        self.horizontalSpacer_bureau_pos = QSpacerItem(20, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
+
+        self.horizontalLayout_bureau_pos.addItem(self.horizontalSpacer_bureau_pos)
+
+
+        self.verticalLayout_bureau.addLayout(self.horizontalLayout_bureau_pos)
+
+        self.Bureau_DailyFirstcheckBox = QCheckBox(self.Bureau)
+        self.Bureau_DailyFirstcheckBox.setObjectName(u"Bureau_DailyFirstcheckBox")
+        self.Bureau_DailyFirstcheckBox.setChecked(True)
+
+        self.verticalLayout_bureau.addWidget(self.Bureau_DailyFirstcheckBox)
+
+        self.stackedWidget.addWidget(self.Bureau)
         self.RestPage_2 = QWidget()
         self.RestPage_2.setObjectName(u"RestPage_2")
         self.stackedWidget.addWidget(self.RestPage_2)
@@ -726,6 +763,8 @@ class Ui_Form(object):
         self.Raid_RaidDarkcheckBox.setText(QCoreApplication.translate("Form", u"\u6df1\u4e95", None))
         self.Raid_RaidRivercheckBox.setText(QCoreApplication.translate("Form", u"\u8bb0\u5fc6\u98ce\u66b4", None))
         self.Raid_RaidFightcheckBox.setText(QCoreApplication.translate("Form", u"\u4f53\u529b\u526f\u672c", None))
+        self.Bureau_ActionPosLabel.setText(QCoreApplication.translate("Form", u"\u6d3e\u9063\u5730\u70b9", None))
+        self.Bureau_DailyFirstcheckBox.setText(QCoreApplication.translate("Form", u"\u6bcf\u65e5\u9996\u6b21\u6d3e\u9063\u6bcf\u65e5\u4efb\u52a1", None))
         self.FarmMaterial_ProgressLabel.setText(QCoreApplication.translate("Form", u"\u4e3b\u7ebf\u8fdb\u5ea6", None))
         self.FarmMaterial_SweepCountLabel.setText(QCoreApplication.translate("Form", u"\u6bcf\u5173\u626b\u8361\u6b21\u6570", None))
         self.FarmMaterial_裂生冰晶锥checkBox.setText(QCoreApplication.translate("Form", u"\u88c2\u751f\u51b0\u6676\u9525", None))
