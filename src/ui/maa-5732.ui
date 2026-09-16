@@ -166,6 +166,16 @@
                 </property>
                </widget>
               </item>
+              <item>
+               <widget class="QPushButton" name="BureauButton">
+                <property name="text">
+                 <string/>
+                </property>
+                <property name="icon">
+                 <iconset theme="QIcon::ThemeIcon::DocumentProperties"/>
+                </property>
+               </widget>
+              </item>
              </layout>
             </item>
             <item>
@@ -493,6 +503,50 @@
                <layout class="QVBoxLayout" name="verticalLayout_8">
                 <item>
                  <widget class="QComboBox" name="Supervision_RewardCombo"/>
+                </item>
+               </layout>
+              </widget>
+              <widget class="QWidget" name="Bureau">
+               <layout class="QVBoxLayout" name="verticalLayout_bureau">
+                <item>
+                 <layout class="QHBoxLayout" name="horizontalLayout_bureau_pos">
+                  <property name="spacing">
+                   <number>4</number>
+                  </property>
+                  <item>
+                   <widget class="QLabel" name="Bureau_ActionPosLabel">
+                    <property name="text">
+                     <string>派遣地点</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QComboBox" name="Bureau_ActionPosCombo"/>
+                  </item>
+                  <item>
+                   <spacer name="horizontalSpacer_bureau_pos">
+                    <property name="orientation">
+                     <enum>Qt::Orientation::Horizontal</enum>
+                    </property>
+                    <property name="sizeHint" stdset="0">
+                     <size>
+                      <width>20</width>
+                      <height>20</height>
+                     </size>
+                    </property>
+                   </spacer>
+                  </item>
+                 </layout>
+                </item>
+                <item>
+                 <widget class="QCheckBox" name="Bureau_DailyFirstcheckBox">
+                  <property name="text">
+                   <string>每日首次派遣每日任务</string>
+                  </property>
+                  <property name="checked">
+                   <bool>true</bool>
+                  </property>
+                 </widget>
                 </item>
                </layout>
               </widget>

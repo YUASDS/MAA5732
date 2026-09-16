@@ -23,7 +23,7 @@ Base on [MaaFramwork](https://github.com/MaaXYZ/MaaFramework)
 - [x] 基建收菜
 - [x] 管理局体力
 - [x] 定向刷取材料
-- [x] 管理局派遣
+- [x] 管理局定向派遣
 - [x] 赠送/收取友情点
 - [ ] 自动点赞
 - [x] 深井扫荡
