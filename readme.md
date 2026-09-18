@@ -1,7 +1,7 @@
 # MAA5732
 
 <div><p align="center">
-<img src="src/ui/logo.ico" /></p></div>
+<img src="assets\resource\image\logo.ico" /></p></div>
 
 Base on [MaaFramwork](https://github.com/MaaXYZ/MaaFramework)
 部分代码参考了 [MaaYYS](https://github.com/TanyaShue/MaaYYs)图标来源于网络，如有侵权，请联系删除。
@@ -31,6 +31,11 @@ Base on [MaaFramwork](https://github.com/MaaXYZ/MaaFramework)
 - [x] 监察密令领取
 - [ ] 自动切换扫荡队伍
 
+## 界面
+
+<div style="text-align: left;">
+  <img src="assets/resource/image/interface.png" style="width: 50%;" />
+</div>
 ## 使用方法
 
 - 下载Release,解压并运行MAA_5732.exe即可
