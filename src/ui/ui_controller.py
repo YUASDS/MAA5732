@@ -9,7 +9,7 @@ import subprocess
 from functools import partial
 from typing import Union
 from loguru import logger
-from PySide6.QtCore import QObject, QSize, Signal, QTimer, QUrl, Qt
+from PySide6.QtCore import QObject, QSize, Signal, Slot, QTimer, QUrl, Qt
 from PySide6.QtGui import QDesktopServices, QIcon
 from PySide6.QtWidgets import (
     QApplication,
@@ -102,9 +102,6 @@ class MyWidget(QWidget):
     def __init__(self):
         super().__init__()
         self.setWindowFlag(Qt.WindowType.FramelessWindowHint)
-        self.tasker_thread = TaskerThread(self.change_running_state, self.finish_callback)
-        self.tasker_thread.daemon = True
-        self.tasker_thread.start()
         self.signal = MySignal()
         self.signal.button.connect(self.print_gui)
         self.signal.finish.connect(self.handle_finish)
@@ -114,8 +111,13 @@ class MyWidget(QWidget):
         self.signal.download_done.connect(self.handle_download_done)
         self.signal.error.connect(self.handle_error)
         self.signal.snapshot.connect(self.show_snapshot)
-        # 截图开关只能由界面线程动 QTimer, 所以经信号从工作线程切回来
+        # 所有运行状态和控件更新均由界面线程处理。
         self.signal.running.connect(self.handle_running)
+        self.tasker_thread = TaskerThread(
+            lambda: self.change_running_state(False), self.finish_callback
+        )
+        self.tasker_thread.daemon = True
+        self.tasker_thread.start()
         self._snapshot_busy = False
         self.snapshot_timer = QTimer(self)
         self.snapshot_timer.setInterval(SNAPSHOT_INTERVAL_MS)
@@ -335,22 +337,19 @@ class MyWidget(QWidget):
         if isinstance(obj, QPushButton):
             obj.setText(msg)
 
-    def change_running_state(self):
-        if self.state == 0:
-            self.signal.button.emit(self.ui.LinkStartButton, "Stop")
-            self.ui.LinkStartButton.setProperty("running", True)
-            self.state = 1
-        else:
-            self.signal.button.emit(self.ui.LinkStartButton, "Link Start ! ")
-            self.ui.LinkStartButton.setProperty("running", False)
-            self.state = 0
-        self.ui.LinkStartButton.style().unpolish(self.ui.LinkStartButton)
-        self.ui.LinkStartButton.style().polish(self.ui.LinkStartButton)
-        # change_running_state 可能由工作线程调用, 这里只发信号, 定时器交给界面线程
-        self.signal.running.emit(self.state == 1)
+    def change_running_state(self, running: bool):
+        """工作线程只发送明确的状态,不读取或修改任何控件。"""
+        self.signal.running.emit(running)
 
+    @Slot(bool)
     def handle_running(self, running: bool):
-        """跟随任务状态开关实时截图"""
+        """在界面线程统一更新状态、按钮样式和截图定时器。"""
+        self.state = int(running)
+        button = self.ui.LinkStartButton
+        button.setText("Stop" if running else "Link Start ! ")
+        button.setProperty("running", running)
+        button.style().unpolish(button)
+        button.style().polish(button)
         if running:
             self.request_snapshot()
             self.snapshot_timer.start()
@@ -388,10 +387,10 @@ class MyWidget(QWidget):
     def start(self):
         if self.state == 1 and not self.tasker_thread.is_busy():
             logger.warning("检测到状态残留:线程空闲,强制复位后重新启动")
-            self.change_running_state()
+            self.change_running_state(False)
         if self.state == 0:
             self.ui.TaskStatusLabel.setText("运行中...")
-            self.change_running_state()
+            self.change_running_state(True)
             json_data = self.state_to_json()
             self.tasker_thread.add_task(self.state_to_json())
             cfg.settings = json_data
@@ -702,7 +701,7 @@ class MyWidget(QWidget):
                 new_exe = extract_zip(dest, payload_dir)
                 os.remove(dest)
                 if not new_exe:
-                    self.signal.download_done.emit(False, "", "压缩包内未找到exe文件")
+                    self.signal.download_done.emit(False, "", "压缩包内未找到唯一匹配版本的主程序")
                     return
                 self.signal.download_done.emit(True, kind, new_exe)
             else:
