@@ -109,7 +109,12 @@ class StartToHomeAction(MyCustomAction):
                 stop_sleep(1)
                 research_time = 3
                 continue
-
+            # 登录按钮
+            if "登录" in screen_text:
+                clicker.ocr_click("登录")
+                stop_sleep(1)
+                research_time = 3
+                continue
             # 服装弹窗
             if "购买礼包" in screen_text:
                 clicker.click_rate(0.902, 0.062)  # 固定坐标（礼包关闭按钮）

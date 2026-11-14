@@ -1,6 +1,7 @@
 import json
 import os
 import time
+from copy import deepcopy
 
 from loguru import logger
 
@@ -118,16 +119,30 @@ def _merge_settings(saved) -> list[dict]:
 
 # 从Config取值，当前程序专用
 def load_config() -> dict:
-    """读取配置,文件缺失或损坏时使用内置默认值"""
-    config = {**DEFAULT_CONFIG}
+    """读取配置,首次启动创建默认配置,读取失败时使用内置默认值。"""
+    config = deepcopy(DEFAULT_CONFIG)
+    missing = False
     try:
         with open(CONFIG_PATH, "r", encoding="utf-8") as f:
             config.update(json.load(f))
     except FileNotFoundError:
+        missing = True
         logger.warning(f"未找到配置文件 {CONFIG_PATH},使用默认设置")
     except (OSError, ValueError) as e:
         logger.warning(f"配置文件读取失败({e}),使用默认设置")
     config["settings"] = _merge_settings(config.get("settings"))
+    if missing:
+        try:
+            os.makedirs(os.path.dirname(CONFIG_PATH), exist_ok=True)
+            # 仅创建缺失的文件,避免覆盖另一个实例刚保存的配置。
+            with open(CONFIG_PATH, "x", encoding="utf-8") as f:
+                json.dump(config, f, ensure_ascii=False, indent=2)
+        except FileExistsError:
+            return load_config()
+        except OSError as e:
+            logger.warning(f"无法创建初始配置文件 {CONFIG_PATH} ({e}),继续使用默认设置")
+        else:
+            logger.info(f"已创建初始配置文件: {CONFIG_PATH}")
     return config
 
 

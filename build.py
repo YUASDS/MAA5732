@@ -4,12 +4,11 @@ import shutil
 import zipfile
 from pathlib import Path
 
-import PyInstaller.__main__
-
 from src.core import version
 
-# 项目根目录(脚本所在目录),不依赖工作目录
-current_dir = str(Path(__file__).resolve().parent)
+PROJECT_DIR = Path(__file__).resolve().parent
+ASSET_DIRECTORIES = ("adb", "config", "resource", "ui", "MaaCommonAssets")
+EXCLUDED_DIRECTORIES = {".git", "__pycache__", "debug", "logs"}
 
 
 def find_in_site_packages(*parts: str):
@@ -21,67 +20,78 @@ def find_in_site_packages(*parts: str):
     return None
 
 
-# 查找包含 maa/bin 的路径
-maa_bin_path = find_in_site_packages("maa", "bin")
-if maa_bin_path is None:
-    raise FileNotFoundError("Path containing maa/bin not found")
-
-# 查找包含 MaaAgentBinary 的路径
-maa_bin_path2 = find_in_site_packages("MaaAgentBinary")
-if maa_bin_path2 is None:
-    raise FileNotFoundError("Path containing MaaAgentBinary not found")
-
-# 构建 --add-data 参数
-add_data_param = f"{maa_bin_path}{os.pathsep}maa/bin"
-add_data_param2 = f"{maa_bin_path2}{os.pathsep}MaaAgentBinary"
-
-# 运行 PyInstaller 打包命令
-PyInstaller.__main__.run(
-    [
-        os.path.join(current_dir, "main.py"),
-        "--onefile",
-        f"--name=MAA_5732_{version}.exe",
-        f"--add-data={add_data_param}",
-        f"--add-data={add_data_param2}",
-        f"--distpath={os.path.join(current_dir, 'dist')}",
-        f"--workpath={os.path.join(current_dir, 'build')}",
-        f"--specpath={current_dir}",
-        "--clean",
-        "--uac-admin",
-        f"--icon={os.path.join(current_dir, 'src', 'ui', 'logo.ico')}",
-        "--noconsole",
-    ]
-)
+def iter_release_assets(assets_dir: Path):
+    """仅收集运行资源,排除本机配置、日志、调试产物和缓存。"""
+    for name in ASSET_DIRECTORIES:
+        directory = assets_dir / name
+        if not directory.is_dir():
+            continue
+        for root, dirs, files in os.walk(directory):
+            dirs[:] = sorted(d for d in dirs if d not in EXCLUDED_DIRECTORIES)
+            for filename in sorted(files):
+                path = Path(root) / filename
+                relative = path.relative_to(assets_dir)
+                if relative.as_posix() == "config/config.json":
+                    continue
+                if path.suffix.lower() in {".pyc", ".pyo", ".log"}:
+                    continue
+                yield path, relative
 
 
-# 复制 assets 文件夹到 dist 目录
-dist_dir = os.path.join(current_dir, "dist")
-assets_source_path = os.path.join(current_dir, "assets")
-assets_dest_path = os.path.join(dist_dir, "assets")
+def package_release(exe_path: Path, assets_dir: Path) -> Path:
+    """从本次 EXE 和源资源生成 ZIP,不遍历可能含旧版本的 dist。"""
+    if not exe_path.is_file():
+        raise FileNotFoundError(exe_path)
+    if not assets_dir.is_dir():
+        raise FileNotFoundError(assets_dir)
+    zip_path = exe_path.with_suffix(".zip")
+    with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as archive:
+        archive.write(exe_path, exe_path.name)
+        for source, relative in iter_release_assets(assets_dir):
+            # 同时更新 EXE 旁的资源,方便本地运行;已有个人配置不覆盖。
+            destination = exe_path.parent / "assets" / relative
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(source, destination)
+            archive.write(source, (Path("assets") / relative).as_posix())
+    return zip_path
 
-if not os.path.exists(assets_source_path):
-    raise FileNotFoundError("assets folder not found")
 
-# 如果目标路径存在，先删除它
-if os.path.exists(assets_dest_path):
-    shutil.rmtree(assets_dest_path)
+def main(dist_dir: Path = None):
+    import PyInstaller.__main__
 
-# 使用 shutil 复制整个文件夹
-shutil.copytree(assets_source_path, assets_dest_path)
+    dist_dir = Path(dist_dir) if dist_dir is not None else PROJECT_DIR / "dist"
+    dist_dir = dist_dir.resolve()
+    icon_path = PROJECT_DIR / "assets" / "resource" / "image" / "logo.ico"
+    if not icon_path.is_file():
+        raise FileNotFoundError(icon_path)
 
-# 压缩 dist 文件夹为 zip 文件，并保存在 dist 目录中
-zip_filename = f"MAA_5732_{version}.zip"
-zip_filepath = os.path.join(dist_dir, zip_filename)
+    maa_bin_path = find_in_site_packages("maa", "bin")
+    if maa_bin_path is None:
+        raise FileNotFoundError("Path containing maa/bin not found")
+    agent_bin_path = find_in_site_packages("MaaAgentBinary")
+    if agent_bin_path is None:
+        raise FileNotFoundError("Path containing MaaAgentBinary not found")
 
-with zipfile.ZipFile(zip_filepath, "w", zipfile.ZIP_DEFLATED) as zipf:
-    for root, dirs, files in os.walk(dist_dir):
-        for file in files:
-            # 获取文件的绝对路径并相对路径
-            file_path = os.path.join(root, file)
-            # 跳过刚生成的压缩包
-            if file == zip_filename:
-                continue
-            arcname = os.path.relpath(file_path, dist_dir)
-            zipf.write(file_path, arcname)
+    exe_name = f"MAA_5732_{version}.exe"
+    PyInstaller.__main__.run(
+        [
+            str(PROJECT_DIR / "main.py"),
+            "--onefile",
+            f"--name={exe_name}",
+            f"--add-data={maa_bin_path}{os.pathsep}maa/bin",
+            f"--add-data={agent_bin_path}{os.pathsep}MaaAgentBinary",
+            f"--distpath={dist_dir}",
+            f"--workpath={PROJECT_DIR / 'build'}",
+            f"--specpath={PROJECT_DIR}",
+            "--clean",
+            "--uac-admin",
+            f"--icon={icon_path}",
+            "--noconsole",
+        ]
+    )
+    zip_path = package_release(dist_dir / exe_name, PROJECT_DIR / "assets")
+    print(f"Packaging and compression completed: {zip_path}")
 
-print(f"Packaging and compression completed: {zip_filepath}")
+
+if __name__ == "__main__":
+    main()

@@ -3,6 +3,7 @@ import json
 import os
 import zipfile
 import urllib.request
+from pathlib import Path, PurePosixPath
 from loguru import logger
 
 GITHUB_API_URL = "https://api.github.com/repos/YUASDS/MAA5732/releases/latest"
@@ -87,19 +88,34 @@ def verify_sha256(path, expected):
 
 
 def extract_zip(zip_path, dest_dir):
-    """解压zip到dest_dir,返回包内exe文件名,失败返回None"""
-    os.makedirs(dest_dir, exist_ok=True)
+    """只接受与发行包同名的主程序,避免误选旧版本或 assets/adb/adb.exe。"""
+    expected_name = Path(zip_path).with_suffix(".exe").name
     with zipfile.ZipFile(zip_path, "r") as zf:
+        candidates = [
+            info for info in zf.infolist()
+            if not info.is_dir()
+            and PurePosixPath(info.filename.replace("\\", "/")).name.lower()
+            == expected_name.lower()
+        ]
+        if len(candidates) != 1:
+            logger.warning(f"更新包应包含唯一的 {expected_name},实际找到 {len(candidates)} 个")
+            return None
+        # 校验解压位置,确保选中的程序路径和实际落盘路径一致。
+        destination = Path(dest_dir).resolve()
+        for info in zf.infolist():
+            relative = PurePosixPath(info.filename.replace("\\", "/"))
+            if relative.is_absolute() or any(
+                part in {".", ".."} or ":" in part for part in relative.parts
+            ):
+                raise ValueError(f"更新包包含无效路径: {info.filename}")
+            target = destination.joinpath(*relative.parts).resolve()
+            if destination not in target.parents and target != destination:
+                raise ValueError(f"更新包路径超出解压目录: {info.filename}")
+        os.makedirs(destination, exist_ok=True)
         zf.extractall(dest_dir)
-    exe_name = None
-    for root, _, files in os.walk(dest_dir):
-        for name in files:
-            if name.lower().endswith(".exe"):
-                exe_name = os.path.join(root, name)
-                break
-        if exe_name:
-            break
-    return exe_name
+    return str(destination.joinpath(*PurePosixPath(
+        candidates[0].filename.replace("\\", "/")
+    ).parts))
 
 
 def version_tuple(version: str) -> tuple:
