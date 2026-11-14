@@ -72,7 +72,16 @@ class StartToHomeAction(MyCustomAction):
                 stop_sleep(1)
                 research_time = 3
                 continue
-
+            if "丰厚奖励" in screen_text :
+                clicker.click_rate(0.85,0.14)
+                logger.debug("已关闭招募弹窗")
+                stop_sleep(1)
+                research_time = 3
+            if "轻触果实" in screen_text:
+                clicker.click_rate(0.85,0.14)
+                logger.debug("已关闭服装弹窗")
+                stop_sleep(1)
+                research_time = 3
             # 领取月卡
             if "领取" in screen_text:
                 # detail = clicker.ocr_click("领取", roi=[0.5, 0.5, 0.9, 0.9])
@@ -122,6 +131,7 @@ class StartToHomeAction(MyCustomAction):
                 stop_sleep(1)
                 research_time = 3
                 continue
+
             if "生日" in screen_text:
                 clicker.back()
                 stop_sleep(1)
