@@ -8,6 +8,7 @@ from maa.context import Context
 from src.core.TaskerManager import TASKER_MANAGER, MyCustomAction
 from src.utils.configs import cfg, save_confg
 from src.utils.click import Click, stop_sleep
+from maa.pipeline import JRecognitionType, JOCR
 from src.utils.model import StopException
 
 # 扫荡界面加号/减号按钮位置(基于当前界面探测)
@@ -113,9 +114,9 @@ class Raid(MyCustomAction):
         clicker.click_rate(0.9, 0.2)
         clicker.ocr_click("内海")
         clicker.swape([0.8, 0.5, 10, 10], [0.1, 0.3, 10, 10], 0.8)
-        clicker.ocr_click("浊暗之阱")
+        clicker.db_or_ocr("浊暗之井提示", "浊暗之阱")
         clicker.ocr_click("浊暗", roi=[0.25, 0, 0.75, 1])
-        clicker.ocr_click("扫荡")
+        clicker.db_or_ocr("已经完成的关卡，可以进行扫荡的", "扫荡")
         clicker.click_blink()
         clicker.return_home()
         logger.info("RaidDark Finish")
@@ -159,34 +160,34 @@ class Raid(MyCustomAction):
         else:
             clicker.ocr_click(level, roi=[0.3, 0.5, 1, 1])
 
-        clicker.ocr_click("连续扫荡")
+        clicker.db_or_ocr("点击后进入连续扫荡", "连续扫荡")
         # 当体力副本无体力时
         detail = clicker.ocr_click("取消")
-        if detail and detail.status.succeeded:
+        if detail and detail.success:
             clicker.click_blink()
             clicker.return_home()
             logger.warning("资源不足 取消扫荡")
             return
 
-        clicker.ocr_click("开始扫荡")
+        clicker.db_or_ocr("点击后开始扫荡", "开始扫荡")
         stop_sleep(10)
         # 升级的情况
         clicker.click_rate(0.5, 0.1)
-        clicker.ocr_click("完成")
+        clicker.db_or_ocr("点击后完成扫荡", "完成")
         # 继续扫荡
-        clicker.ocr_click("连续扫荡")
+        clicker.db_or_ocr("点击后进入连续扫荡", "连续扫荡")
         # 当体力副本无体力时
         detail = clicker.ocr_click("取消")
-        if detail and detail.status.succeeded:
+        if detail and detail.success:
             clicker.click_blink()
             clicker.return_home()
             logger.warning("资源不足 取消扫荡")
             return
-        clicker.ocr_click("开始扫荡")
+        clicker.db_or_ocr("点击后开始扫荡", "开始扫荡")
         stop_sleep(10)
         # 升级的情况
         clicker.click_rate(0.5, 0.1)
-        clicker.ocr_click("完成")
+        clicker.db_or_ocr("点击后完成扫荡", "完成")
         clicker.return_home()
 
     def add_range(self, num):
@@ -229,35 +230,27 @@ class Raid(MyCustomAction):
                 int(0.30 * w) : int(0.48 * w),
             ]
             big = np.repeat(np.repeat(crop, 3, axis=0), 3, axis=1)
-            detail = click.context.run_recognition(
-                "get_num_zoom",
-                big,
-                {"get_num_zoom": {"recognition": "OCR", "timeout": 10000}},
+            detail = click.context.run_recognition_direct(
+                JRecognitionType.OCR, JOCR(), big
             )
             num = self._parse_num(self._ocr_texts(detail))
             if num is not None:
                 return num
             stop_sleep(0.5)
         # 3) 整屏兜底
-        detail = click.context.run_task(
-            "get_num_full",
-            {"get_num_full": {"recognition": "OCR", "timeout": 10000}},
+        image = click.context.tasker.controller.post_screencap().wait().get()
+        detail = click.context.run_recognition_direct(
+            JRecognitionType.OCR, JOCR(), image
         )
         return self._parse_num(self._ocr_texts(detail), allow_standalone=False)
 
     def _ocr_texts(self, detail):
-        """从任务/识别结果中提取OCR文本列表"""
+        """从识别结果中提取OCR文本列表"""
         if detail is None:
             return []
-        if hasattr(detail, "nodes"):
-            if not detail.nodes:
-                return []
-            raw = detail.nodes[-1].recognition.raw_detail
-        else:
-            raw = detail.raw_detail
-        if not raw:
+        if not hasattr(detail, "all_results"):
             return []
-        return [item["text"] for item in raw.get("all", [])]
+        return [r.text for r in detail.all_results if hasattr(r, "text")]
 
     def _parse_num(self, texts, allow_standalone=True):
         """从OCR文本列表解析选择次数,超过合理范围(1-20)视为误读"""
@@ -399,7 +392,7 @@ class Raid(MyCustomAction):
         if first == "废墟" and not res:
             clicker.swape([0.1, 0.9, 10, 10], [0.12, 0.1, 10, 10], 1000)
             res = clicker.ocr_click(second)
-        if not res or not res.status.succeeded:
+        if not res or not res.success:
             logger.warning(f"{name} 关卡未找到")
             clicker.return_home()
             return False
@@ -418,10 +411,10 @@ class Raid(MyCustomAction):
             if second =="极域" and level >= "3":
                 level = "3"
             clicker.ocr_click(level, roi=[0.3, 0.5, 1, 1])
-        clicker.ocr_click("连续扫荡")
+        clicker.db_or_ocr("点击后进入连续扫荡", "连续扫荡")
         # 当体力副本无体力时
         detail = clicker.ocr_click("取消")
-        if detail and detail.status.succeeded:
+        if detail and detail.success:
             clicker.click_blink()
             clicker.return_home()
             logger.warning("资源不足 取消扫荡")
@@ -431,7 +424,7 @@ class Raid(MyCustomAction):
             clicker.return_home()
             return False
         detail = clicker.ocr_click("开始扫荡")
-        if not detail or not detail.status.succeeded:
+        if not detail or not detail.success:
             logger.warning(f"{name} 开始扫荡失败")
             clicker.back()
             clicker.return_home()
@@ -439,7 +432,7 @@ class Raid(MyCustomAction):
         self._sweep_started = True
         stop_sleep(12)
         clicker.click_rate(0.5, 0.1)
-        clicker.ocr_click("完成")
+        clicker.db_or_ocr("点击后完成扫荡", "完成")
         clicker.return_home()
         return True
     def stop(self) -> None:

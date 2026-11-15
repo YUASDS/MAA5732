@@ -87,7 +87,7 @@ class Purchase(MyCustomAction):
     def purchase(self, name, num):
         click = self.clicker
         res = click.ocr_click(name)
-        if not res or not res.status.succeeded:
+        if not res or not res.success:
             logger.warning(f"没有找到{name}")
             return
         stop_sleep(1)

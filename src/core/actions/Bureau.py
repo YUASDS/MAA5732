@@ -64,11 +64,11 @@ class Bureau(MyCustomAction):
         #  点击危机管理-OCR识别率低
         clicker.click_rate(0.74, 0.89)
         clicker.ocr_click("管理局")
-        clicker.ocr_click("派遣")
-        clicker.ocr_click("一键领取")
+        clicker.db_or_ocr("点击进行派遣", "派遣")
+        clicker.db_or_ocr("点击领取", "一键领取")
         clicker.click_rate(0.9, 0.6)
         clicker.ocr_click(pos)
-        clicker.ocr_click("一键")
+        clicker.db_or_ocr("点击后进入一键派遣", "一键")
         if first_today:
             # 派遣一旦发出去, 每天一次的"每日任务"就用掉了: 即使随后被手动停止或
             # 体力领取失败也不回滚, 否则重复回退反而会漏掉真正的每日奖励。

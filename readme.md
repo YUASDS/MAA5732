@@ -1,5 +1,8 @@
 # MAA5732
 
+> **本 fork 说明**：基于 [YUASDS/Maa5732](https://github.com/YUASDS/Maa5732) 修改（GPL-3.0）。
+> 主要改动：MaaFw 3.0 → 5.16 适配 + 坐标库点击优化，详见 [改动说明.md](改动说明.md)。
+
 <div><p align="center">
 <img src="assets\resource\image\logo.ico" /></p></div>
 

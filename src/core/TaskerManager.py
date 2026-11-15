@@ -11,7 +11,6 @@ from maa.toolkit import Toolkit
 from maa.custom_action import CustomAction
 from maa.define import MaaAdbInputMethodEnum, MaaAdbScreencapMethodEnum
 from maa.context import Context
-from maa.notification_handler import NotificationHandler, NotificationType
 
 from src.utils.configs import cfg
 from src.utils.paths import asset_path
@@ -43,49 +42,6 @@ class MyCustomAction(CustomAction):
 
     def stop(self) -> None:
         pass
-
-
-class MyNotificationHandler(NotificationHandler):
-    def on_resource_loading(
-        self,
-        noti_type: NotificationType,
-        detail: NotificationHandler.ResourceLoadingDetail,
-    ):
-        print(f"on_resource_loading: {noti_type}, {detail}")
-
-    def on_controller_action(
-        self,
-        noti_type: NotificationType,
-        detail: NotificationHandler.ControllerActionDetail,
-    ):
-        print(f"on_controller_action: {noti_type}, {detail}")
-
-    def on_tasker_task(
-        self, noti_type: NotificationType, detail: NotificationHandler.TaskerTaskDetail
-    ):
-        print(f"on_tasker_task: {noti_type}, {detail}")
-
-    def on_node_next_list(
-        self,
-        noti_type: NotificationType,
-        detail: NotificationHandler.NodeNextListDetail,
-    ):
-        print(f"on_node_next_list: {noti_type}, {detail}")
-
-    def on_node_recognition(
-        self,
-        noti_type: NotificationType,
-        detail: NotificationHandler.NodeRecognitionDetail,
-    ):
-        print(f"on_node_recognition: {noti_type}, {detail}")
-
-    def on_node_action(
-        self, noti_type: NotificationType, detail: NotificationHandler.NodeActionDetail
-    ):
-        print(f"on_node_action: {noti_type}, {detail}")
-
-    def on_unknown_notification(self, msg: str, details: dict):
-        print(f"on_unknown_notification: {msg}, {details}")
 
 
 # 输入方式: 含 MaaTouch, 否则拖动类手势会被游戏忽略

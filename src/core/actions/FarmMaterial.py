@@ -785,7 +785,7 @@ class FarmMaterial(MyCustomAction):
             clicker.return_home()
             return "unavailable"
         detail = clicker.ocr_click(CANCEL)          # 体力不足会弹取消
-        if detail and detail.status.succeeded:
+        if detail and detail.success:
             clicker.click_blink()
             clicker.return_home()
             return "no_stamina"
