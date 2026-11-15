@@ -39,7 +39,7 @@ class StartToHomeAction(MyCustomAction):
             # 管理局密钥
             if "管理局密钥" in screen_text:
                 detail = clicker.ocr_click("领取",roi=[0.5,0.5,1,1])
-                if detail and detail.status.succeeded:
+                if detail and detail.success:
                     logger.debug("已领取管理局密钥")
                 clicker.back()
                 stop_sleep(1)
@@ -58,7 +58,7 @@ class StartToHomeAction(MyCustomAction):
             # # 点击“进入管理局”
             if "进入管理局" in screen_text:
                 detail = clicker.ocr_click("进入管理局")
-                if detail and detail.status.succeeded:
+                if detail and detail.success:
                     logger.info("已点击『进入管理局』")
                     stop_sleep(10)  # 等待加载
                 research_time = 3
@@ -67,7 +67,7 @@ class StartToHomeAction(MyCustomAction):
             # 关闭广告
             if "今日不再弹出" in screen_text:
                 detail = clicker.click_rate(0.1, 0.1, 20, 20)  # 固定坐标
-                if detail and detail.status.succeeded:
+                if detail and detail.success:
                     logger.debug("已关闭广告弹窗")
                 stop_sleep(1)
                 research_time = 3
@@ -85,7 +85,7 @@ class StartToHomeAction(MyCustomAction):
             # 领取月卡
             if "领取" in screen_text:
                 # detail = clicker.ocr_click("领取", roi=[0.5, 0.5, 0.9, 0.9])
-                # if detail and detail.status.succeeded:
+                # if detail and detail.success:
                 clicker.click_blink()  # 确认
                 clicker.click_blink()
                 logger.debug("已领取月卡")
@@ -95,7 +95,7 @@ class StartToHomeAction(MyCustomAction):
 
             if "贵宾" in screen_text:
                 detail = clicker.ocr_click("贵宾")
-                if detail and detail.status.succeeded:
+                if detail and detail.success:
                     clicker.click_blink()
                     clicker.click_blink()
                     logger.debug("已领取贵宾奖励")

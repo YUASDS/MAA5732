@@ -1,5 +1,5 @@
-MaaFw==3.0.0
-numpy==2.0.2
-pyinstaller==6.9.0
-pyside6==6.8.1.1
-loguru==0.7.3
+MaaFw>=5.0.0
+numpy>=2.0
+pyinstaller>=6.0
+pyside6>=6.8
+loguru>=0.7

@@ -23,7 +23,8 @@ class GetMail(MyCustomAction):
         logger.info(f"邮件领取 开始")
         clicker = Click(context)
         clicker.ocr_click("邮箱")
-        clicker.ocr_click("快速处理")
+        if not clicker.db_click("邮箱的一键领取"):
+            clicker.ocr_click("快速处理")
         clicker.click_blink()
         clicker.return_home()
         logger.info("邮件领取 完成")
